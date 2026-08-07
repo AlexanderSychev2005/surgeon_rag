@@ -1,0 +1,31 @@
+SURGERY_MESH_QUERY = (
+    '("Surgical Procedures, Operative"[MeSH] '
+    'OR "General Surgery"[MeSH] '
+    'OR "Perioperative Care"[MeSH] '
+    'OR "Preoperative Care"[MeSH] '
+    'OR "Postoperative Care"[MeSH] '
+    'OR "Postoperative Complications"[MeSH] '
+    'OR "Intraoperative Complications"[MeSH] '
+    'OR "Anesthesia"[MeSH] '
+    'OR "Venous Thromboembolism"[MeSH] '
+    'OR "Antibiotic Prophylaxis"[MeSH] '
+    'OR "Surgical Wound Infection"[MeSH] '
+    'OR "Wound Healing"[MeSH] '
+    'OR "Blood Loss, Surgical"[MeSH] '
+    'OR "Blood Transfusion"[MeSH] '
+    'OR "Minimally Invasive Surgical Procedures"[MeSH] '
+    'OR "Robotic Surgical Procedures"[MeSH] '
+    'OR "Laparoscopy"[MeSH] '
+    'OR "Reoperation"[MeSH] '
+    'OR "Postoperative Nausea and Vomiting"[MeSH] '
+    'OR "Pain, Postoperative"[MeSH] '
+    'OR "Enhanced Recovery After Surgery"[MeSH] '
+    'OR "Patient Safety"[MeSH] '
+    'OR "Length of Stay"[MeSH] '
+    'OR "Critical Illness"[MeSH] '
+    'OR "Wounds and Injuries"[MeSH]) '
+    'NOT "Retracted Publication"[pt]'
+)
+
+QDRANT_COLLECTION = "pubmed_surgery"
+VECTOR_SIZE = 768  # MedCPT-Article-Encoder output dim
