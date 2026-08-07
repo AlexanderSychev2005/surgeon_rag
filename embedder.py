@@ -6,13 +6,17 @@ Both use CLS-token pooling of the last hidden state.
 import torch
 from transformers import AutoModel, AutoTokenizer
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32  # fp16 on GPU: ~2x
+                                                                 # less VRAM and faster matmuls,
+                                                                 # negligible quality loss for embeddings
 _CACHE = {}
 
 
 def _load(name):
     if name not in _CACHE:
         tok = AutoTokenizer.from_pretrained(name)
-        model = AutoModel.from_pretrained(name)
+        model = AutoModel.from_pretrained(name).to(DEVICE, dtype=DTYPE)
         model.eval()
         _CACHE[name] = (tok, model)
     return _CACHE[name]
@@ -22,12 +26,12 @@ def _load(name):
 def embed_queries(queries):
     """queries: list[str] -> (N, 768) float32 array"""
     tok, model = _load("ncbi/MedCPT-Query-Encoder")
-    enc = tok(queries, truncation=True, padding=True, return_tensors="pt", max_length=64)
-    return model(**enc).last_hidden_state[:, 0, :].numpy()
+    enc = tok(queries, truncation=True, padding=True, return_tensors="pt", max_length=64).to(DEVICE)
+    return model(**enc).last_hidden_state[:, 0, :].float().cpu().numpy()
 
 
 @torch.no_grad()
-def embed_articles(title_text_pairs, batch_size=16):
+def embed_articles(title_text_pairs, batch_size=64):
     """title_text_pairs: list[[title, text]] -> (N, 768) float32 array.
     `text` is the abstract for the main doc, or a full-text chunk when we
     embed chunks - keeping the [title, X] pair format matches how the model
@@ -36,13 +40,15 @@ def embed_articles(title_text_pairs, batch_size=16):
     Mini-batched: a single article with full text can produce 50+ chunks, and
     a sync batch covers ~200 articles, so passing everything through in one
     forward pass can demand several GB for the attention matrices alone (hit
-    an OOM on CPU at ~2000 pairs in practice) - batch_size caps that."""
+    an OOM on CPU at ~2000 pairs in practice) - batch_size caps that.
+    Runs on CUDA automatically if available (DEVICE above) - a 4GB laptop GPU
+    comfortably handles this BERT-base model at this batch size, in fp16."""
     tok, model = _load("ncbi/MedCPT-Article-Encoder")
     chunks = []
     for i in range(0, len(title_text_pairs), batch_size):
         batch = title_text_pairs[i:i + batch_size]
-        enc = tok(batch, truncation=True, padding=True, return_tensors="pt", max_length=512)
-        chunks.append(model(**enc).last_hidden_state[:, 0, :])
+        enc = tok(batch, truncation=True, padding=True, return_tensors="pt", max_length=512).to(DEVICE)
+        chunks.append(model(**enc).last_hidden_state[:, 0, :].float().cpu())
     return torch.cat(chunks, dim=0).numpy()
 
 

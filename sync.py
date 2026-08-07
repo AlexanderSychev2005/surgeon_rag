@@ -15,7 +15,10 @@ from qdrant_setup import ensure_collection
 
 log = get_logger(__name__)
 BATCH_SIZE = 200
-LOOKBACK_DAYS = 3  # overlap safety margin if a run was skipped/failed; upsert is idempotent
+LOOKBACK_DAYS = 1  # small overlap buffer (EDAT is day-granularity); upsert is
+                    # idempotent so re-touching a day is harmless, but a wider
+                    # margin means needlessly re-fetching/re-embedding articles
+                    # already ingested on every single run
 
 
 def get_watermark(client):
@@ -29,27 +32,37 @@ def get_watermark(client):
     return points[0].payload.get("edat") if points else None
 
 
-def run_sync():
+def run_sync(limit=None, days=None):
+    """limit: cap the number of articles processed this run - handy for a
+    quick test without waiting out a full window.
+    days: override the window to `today - days`, ignoring the watermark -
+    for bootstrapping a fresh collection where there's no watermark yet to
+    follow. Normal incremental runs should leave this as None."""
     client = ensure_collection()
     watermark = get_watermark(client)
-    anchor = datetime.date.fromisoformat(watermark) if watermark else datetime.date.today()
-    mindate = (anchor - datetime.timedelta(days=LOOKBACK_DAYS)).strftime("%Y/%m/%d")
+    if days is not None:
+        mindate = (datetime.date.today() - datetime.timedelta(days=days)).strftime("%Y/%m/%d")
+    else:
+        anchor = datetime.date.fromisoformat(watermark) if watermark else datetime.date.today()
+        mindate = (anchor - datetime.timedelta(days=LOOKBACK_DAYS)).strftime("%Y/%m/%d")
     maxdate = datetime.date.today().strftime("%Y/%m/%d")
 
     log.info(f"sync: watermark={watermark}, querying edat {mindate}..{maxdate}")
     webenv, query_key, count = esearch_history(
         SURGERY_MESH_QUERY, mindate=mindate, maxdate=maxdate, datetype="edat"
     )
-    log.info(f"sync: {count} articles added to PubMed in window")
+    total = min(count, limit) if limit else count
+    log.info(f"sync: {count} articles added to PubMed in window, processing {total}")
 
     written, points_written, with_full_text = 0, 0, 0
-    for start in range(0, count, BATCH_SIZE):
-        articles = efetch_history_batch(webenv, query_key, retstart=start, retmax=min(BATCH_SIZE, count - start))
+    for start in range(0, total, BATCH_SIZE):
+        retmax = min(BATCH_SIZE, total - start)
+        articles = efetch_history_batch(webenv, query_key, retstart=start, retmax=retmax)
         n_points, n_full = ingest_articles(client, articles)
         written += len(articles)
         points_written += n_points
         with_full_text += n_full
-        log.info(f"sync progress [{written}/{count}] (+{n_points} points, {n_full} with full text)")
+        log.info(f"sync progress [{written}/{total}] (+{n_points} points, {n_full} with full text)")
 
     log.info(f"sync done: {written} articles processed")
     record_event(
@@ -60,5 +73,11 @@ def run_sync():
 
 
 if __name__ == "__main__":
-    n = run_sync()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int, default=None, help="cap articles processed (quick tests)")
+    parser.add_argument("--days", type=int, default=None, help="bootstrap window: today - days, ignores watermark")
+    args = parser.parse_args()
+    n = run_sync(limit=args.limit, days=args.days)
     print(f"OK: sync processed {n} articles")

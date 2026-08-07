@@ -1,0 +1,21 @@
+[project]
+name = "medical-rag"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "qdrant-client",
+    "requests",
+    "python-dotenv",
+    "pypdf",
+    "torch",
+    "transformers",
+    "huggingface_hub",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }

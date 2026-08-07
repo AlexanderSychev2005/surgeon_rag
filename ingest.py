@@ -3,6 +3,7 @@ One PointStruct per abstract (id = int(pmid)) plus one per full-text chunk
 (deterministic uuid5 id, so re-running ingest on the same article is a no-op
 upsert, not a duplicate)."""
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from qdrant_client.models import PointStruct
 
@@ -17,6 +18,16 @@ NAMESPACE = uuid.NAMESPACE_DNS
 UPSERT_BATCH = 64  # a full ingest batch (~200 articles) can be 1000s of chunk
                     # points; upserting them in one HTTP call risks the server
                     # dropping the connection mid-request (seen in practice)
+FULLTEXT_WORKERS = 16  # full-text resolution is network I/O (PMC/EuropePMC/
+                        # Unpaywall calls), not CPU - a plain sequential loop
+                        # over ~200 articles/batch was the dominant time cost
+                        # in practice (~1-2s per article even on a miss)
+
+
+def _fetch_full_text(doc):
+    if doc.get("pmcid") or doc.get("doi"):
+        return get_full_text(pmcid=doc.get("pmcid"), doi=doc.get("doi"))
+    return None, None
 
 
 def _payload(doc, **extra):
@@ -37,17 +48,21 @@ def _payload(doc, **extra):
 
 def ingest_articles(client, articles, fetch_full_text=True):
     """Returns (points_written, articles_with_full_text)."""
+    if fetch_full_text:
+        with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
+            full_text_results = list(pool.map(_fetch_full_text, articles))
+    else:
+        full_text_results = [(None, None)] * len(articles)
+
     entries = []  # (doc, section, text, source)
-    for doc in articles:
+    for doc, (full_text, ft_source) in zip(articles, full_text_results):
         entries.append((doc, "abstract", doc["abstract"], "pubmed_abstract"))
-        n_chunks, ft_source = 0, None
-        if fetch_full_text and (doc.get("pmcid") or doc.get("doi")):
-            full_text, ft_source = get_full_text(pmcid=doc.get("pmcid"), doi=doc.get("doi"))
-            if full_text:
-                chunks = chunk_text(full_text)
-                n_chunks = len(chunks)
-                for i, chunk in enumerate(chunks):
-                    entries.append((doc, f"fulltext_{i}", chunk, ft_source))
+        n_chunks = 0
+        if full_text:
+            chunks = chunk_text(full_text)
+            n_chunks = len(chunks)
+            for i, chunk in enumerate(chunks):
+                entries.append((doc, f"fulltext_{i}", chunk, ft_source))
         log.info(
             f"ingest pmid={doc['pmid']} title={doc['title'][:60]!r} "
             f"full_text={'yes:' + ft_source if n_chunks else 'no'} chunks={n_chunks}"

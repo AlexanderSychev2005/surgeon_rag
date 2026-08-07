@@ -1,9 +1,11 @@
 name: Daily PubMed sync
 
 on:
-  schedule:
-    - cron: "0 6 * * *"  # 06:00 UTC daily
-  workflow_dispatch: {}  # allows manual "Run workflow" button too
+  # schedule disabled for now - running locally (faster iteration, local GPU).
+  # re-enable once the local flow is stable:
+  # schedule:
+  #   - cron: "0 6 * * *"  # 06:00 UTC daily
+  workflow_dispatch: {}  # manual "Run workflow" button still works
 
 permissions:
   contents: write  # needed to commit sync_history.jsonl back to the repo

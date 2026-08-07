@@ -5,6 +5,8 @@ ANN search already narrowed down."""
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from embedder import DEVICE, DTYPE
+
 _NAME = "ncbi/MedCPT-Cross-Encoder"
 _cache = {}
 
@@ -12,14 +14,14 @@ _cache = {}
 def _load():
     if _NAME not in _cache:
         tok = AutoTokenizer.from_pretrained(_NAME)
-        model = AutoModelForSequenceClassification.from_pretrained(_NAME)
+        model = AutoModelForSequenceClassification.from_pretrained(_NAME).to(DEVICE, dtype=DTYPE)
         model.eval()
         _cache[_NAME] = (tok, model)
     return _cache[_NAME]
 
 
 @torch.no_grad()
-def rerank(query, candidates, top_k=8, batch_size=16):
+def rerank(query, candidates, top_k=8, batch_size=64):
     """candidates: list of dicts with at least 'title' and 'text' (payload
     from a Qdrant hit). Returns the same dicts, sliced to top_k, sorted by
     cross-encoder score desc, each with a 'rerank_score' field added.
@@ -34,8 +36,8 @@ def rerank(query, candidates, top_k=8, batch_size=16):
     for i in range(0, len(candidates), batch_size):
         batch = candidates[i:i + batch_size]
         pairs = [[query, f"{c['title']}. {c['text']}"] for c in batch]
-        encoded = tok(pairs, truncation=True, padding=True, return_tensors="pt", max_length=512)
-        batch_scores = model(**encoded).logits.squeeze(dim=1).tolist()
+        encoded = tok(pairs, truncation=True, padding=True, return_tensors="pt", max_length=512).to(DEVICE)
+        batch_scores = model(**encoded).logits.float().squeeze(dim=1).cpu().tolist()
         scores.extend(batch_scores if isinstance(batch_scores, list) else [batch_scores])
     scored = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
     return [{**c, "rerank_score": s} for c, s in scored[:top_k]]

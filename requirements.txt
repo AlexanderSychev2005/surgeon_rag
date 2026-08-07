@@ -1,7 +1,0 @@
-qdrant-client
-requests
-python-dotenv
-pypdf
-torch
-transformers
-huggingface_hub

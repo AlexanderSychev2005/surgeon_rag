@@ -3,6 +3,7 @@ publisher's PMC deposit is embargoed (common: 6-12 months post-publication).
 This scrolls Qdrant for abstract points still flagged has_full_text=false,
 retries the resolution chain, and upserts newly-found full-text chunks."""
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from qdrant_client.models import (
     FieldCondition,
@@ -15,7 +16,7 @@ from config import QDRANT_COLLECTION
 from chunking import chunk_text
 from embedder import embed_articles
 from fulltext import get_full_text
-from ingest import UPSERT_BATCH
+from ingest import FULLTEXT_WORKERS, UPSERT_BATCH
 from logsetup import get_logger, record_event
 from qdrant_setup import get_client
 
@@ -46,11 +47,15 @@ def recheck(batch_size=50, max_batches=None):
         if not points:
             break
 
+        with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
+            full_text_results = list(pool.map(
+                lambda p: get_full_text(pmcid=p.payload.get("pmcid"), doi=p.payload.get("doi")), points
+            ))
+
         new_points = []
-        for point in points:
+        for point, (full_text, source) in zip(points, full_text_results):
             checked += 1
             payload = point.payload
-            full_text, source = get_full_text(pmcid=payload.get("pmcid"), doi=payload.get("doi"))
             if not full_text:
                 continue
 
