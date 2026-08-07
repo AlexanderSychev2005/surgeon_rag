@@ -27,14 +27,23 @@ def embed_queries(queries):
 
 
 @torch.no_grad()
-def embed_articles(title_text_pairs):
+def embed_articles(title_text_pairs, batch_size=16):
     """title_text_pairs: list[[title, text]] -> (N, 768) float32 array.
     `text` is the abstract for the main doc, or a full-text chunk when we
     embed chunks - keeping the [title, X] pair format matches how the model
-    was trained, even though X isn't strictly "the abstract" for chunks."""
+    was trained, even though X isn't strictly "the abstract" for chunks.
+
+    Mini-batched: a single article with full text can produce 50+ chunks, and
+    a sync batch covers ~200 articles, so passing everything through in one
+    forward pass can demand several GB for the attention matrices alone (hit
+    an OOM on CPU at ~2000 pairs in practice) - batch_size caps that."""
     tok, model = _load("ncbi/MedCPT-Article-Encoder")
-    enc = tok(title_text_pairs, truncation=True, padding=True, return_tensors="pt", max_length=512)
-    return model(**enc).last_hidden_state[:, 0, :].numpy()
+    chunks = []
+    for i in range(0, len(title_text_pairs), batch_size):
+        batch = title_text_pairs[i:i + batch_size]
+        enc = tok(batch, truncation=True, padding=True, return_tensors="pt", max_length=512)
+        chunks.append(model(**enc).last_hidden_state[:, 0, :])
+    return torch.cat(chunks, dim=0).numpy()
 
 
 def demo():

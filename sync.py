@@ -9,7 +9,7 @@ from qdrant_client.models import Direction, FieldCondition, Filter, MatchValue, 
 
 from config import QDRANT_COLLECTION, SURGERY_MESH_QUERY
 from ingest import ingest_articles
-from logsetup import get_logger
+from logsetup import get_logger, record_event
 from pubmed_client import efetch_history_batch, esearch_history
 from qdrant_setup import ensure_collection
 
@@ -42,14 +42,20 @@ def run_sync():
     )
     log.info(f"sync: {count} articles added to PubMed in window")
 
-    written = 0
+    written, points_written, with_full_text = 0, 0, 0
     for start in range(0, count, BATCH_SIZE):
         articles = efetch_history_batch(webenv, query_key, retstart=start, retmax=min(BATCH_SIZE, count - start))
         n_points, n_full = ingest_articles(client, articles)
         written += len(articles)
+        points_written += n_points
+        with_full_text += n_full
         log.info(f"sync progress [{written}/{count}] (+{n_points} points, {n_full} with full text)")
 
     log.info(f"sync done: {written} articles processed")
+    record_event(
+        "sync", window=f"{mindate}..{maxdate}", watermark=watermark, matched=count,
+        articles_written=written, points_written=points_written, with_full_text=with_full_text,
+    )
     return written
 
 

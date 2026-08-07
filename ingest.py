@@ -14,6 +14,9 @@ from logsetup import get_logger
 
 log = get_logger(__name__)
 NAMESPACE = uuid.NAMESPACE_DNS
+UPSERT_BATCH = 64  # a full ingest batch (~200 articles) can be 1000s of chunk
+                    # points; upserting them in one HTTP call risks the server
+                    # dropping the connection mid-request (seen in practice)
 
 
 def _payload(doc, **extra):
@@ -68,7 +71,8 @@ def ingest_articles(client, articles, fetch_full_text=True):
         )
         for (doc, section, text, source), vector in zip(entries, vectors)
     ]
-    client.upsert(collection_name=QDRANT_COLLECTION, points=points)
+    for i in range(0, len(points), UPSERT_BATCH):
+        client.upsert(collection_name=QDRANT_COLLECTION, points=points[i:i + UPSERT_BATCH])
     log.info(
         f"upserted {len(points)} points for {len(articles)} articles "
         f"({len(has_full_text)} with full text) into {QDRANT_COLLECTION!r}"

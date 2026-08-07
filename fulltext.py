@@ -34,7 +34,9 @@ def _text_from_europepmc_xml(xml_bytes):
 def _text_from_pdf_url(url):
     r = requests.get(url, timeout=30, headers={"User-Agent": "medical-rag-research/0.1"})
     r.raise_for_status()
-    if "pdf" not in r.headers.get("Content-Type", "").lower() and not url.lower().endswith(".pdf"):
+    if not r.content.startswith(b"%PDF"):
+        # Content-Type/.pdf-suffix heuristics both lie in practice (landing
+        # pages, login walls) - the magic number is the only reliable check.
         return None
     reader = PdfReader(io.BytesIO(r.content))
     return "\n".join((p.extract_text() or "") for p in reader.pages).strip()
@@ -74,7 +76,11 @@ def get_full_text(pmcid=None, doi=None):
                 loc = data.get("best_oa_location") or {}
                 pdf_url = loc.get("url_for_pdf") or loc.get("url")
                 if pdf_url:
-                    text = _text_from_pdf_url(pdf_url)
+                    try:
+                        text = _text_from_pdf_url(pdf_url)
+                    except Exception as e:  # pypdf can raise many distinct error types on malformed PDFs
+                        log.warning(f"pdf extraction failed for {doi} ({pdf_url}): {e}")
+                        text = None
                     if text:
                         log.info(f"full text via unpaywall: {doi} ({len(text)} chars)")
                         return text, "unpaywall"

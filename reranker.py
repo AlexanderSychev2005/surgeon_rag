@@ -19,18 +19,24 @@ def _load():
 
 
 @torch.no_grad()
-def rerank(query, candidates, top_k=8):
+def rerank(query, candidates, top_k=8, batch_size=16):
     """candidates: list of dicts with at least 'title' and 'text' (payload
     from a Qdrant hit). Returns the same dicts, sliced to top_k, sorted by
-    cross-encoder score desc, each with a 'rerank_score' field added."""
+    cross-encoder score desc, each with a 'rerank_score' field added.
+
+    Mini-batched for the same reason as embedder.embed_articles: a full
+    candidate_pool (e.g. 100) run through cross-attention in one forward
+    pass risks a multi-GB single allocation on CPU."""
     if not candidates:
         return []
     tok, model = _load()
-    pairs = [[query, f"{c['title']}. {c['text']}"] for c in candidates]
-    encoded = tok(pairs, truncation=True, padding=True, return_tensors="pt", max_length=512)
-    scores = model(**encoded).logits.squeeze(dim=1).tolist()
-    if isinstance(scores, float):  # squeeze collapses a single-pair batch to a scalar
-        scores = [scores]
+    scores = []
+    for i in range(0, len(candidates), batch_size):
+        batch = candidates[i:i + batch_size]
+        pairs = [[query, f"{c['title']}. {c['text']}"] for c in batch]
+        encoded = tok(pairs, truncation=True, padding=True, return_tensors="pt", max_length=512)
+        batch_scores = model(**encoded).logits.squeeze(dim=1).tolist()
+        scores.extend(batch_scores if isinstance(batch_scores, list) else [batch_scores])
     scored = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
     return [{**c, "rerank_score": s} for c, s in scored[:top_k]]
 

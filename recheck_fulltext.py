@@ -15,7 +15,8 @@ from config import QDRANT_COLLECTION
 from chunking import chunk_text
 from embedder import embed_articles
 from fulltext import get_full_text
-from logsetup import get_logger
+from ingest import UPSERT_BATCH
+from logsetup import get_logger, record_event
 from qdrant_setup import get_client
 
 log = get_logger(__name__)
@@ -71,8 +72,8 @@ def recheck(batch_size=50, max_batches=None):
             log.info(f"recheck upgraded pmid={payload['pmid']} title={payload['title'][:60]!r} "
                       f"via {source} ({len(chunks)} chunks)")
 
-        if new_points:
-            client.upsert(collection_name=QDRANT_COLLECTION, points=new_points)
+        for i in range(0, len(new_points), UPSERT_BATCH):
+            client.upsert(collection_name=QDRANT_COLLECTION, points=new_points[i:i + UPSERT_BATCH])
 
         batches += 1
         log.info(f"recheck batch {batches}: checked {checked} so far, {upgraded} upgraded")
@@ -80,6 +81,7 @@ def recheck(batch_size=50, max_batches=None):
             break
 
     log.info(f"recheck done: checked {checked}, upgraded {upgraded}")
+    record_event("recheck", checked=checked, upgraded=upgraded)
     return checked, upgraded
 
 
@@ -89,4 +91,6 @@ def demo():
 
 
 if __name__ == "__main__":
-    demo()
+    # full run (no max_batches cap) - this is what the daily cron calls
+    checked, upgraded = recheck(batch_size=50)
+    print(f"OK: checked {checked} pending docs, upgraded {upgraded} to full text")
