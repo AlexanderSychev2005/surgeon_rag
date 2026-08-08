@@ -1,4 +1,5 @@
 import time
+from typing import List, Tuple, Dict, Any, Optional
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -10,12 +11,8 @@ session = requests.Session()
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
 session.mount('https://', HTTPAdapter(max_retries=retries))
 
-def search_ct_history(mindate: str, maxdate: str, query=SURGERY_CT_QUERY, page_size=1000, page_token=None):
-    """
-    mindate, maxdate in YYYY-MM-DD format.
-    Uses LAST_UPDATE_POSTED to find trials updated or posted in the window.
-    """
-    # Convert YYYY/MM/DD to YYYY-MM-DD if needed
+
+def search_ct_history(mindate: str, maxdate: str, query: str = SURGERY_CT_QUERY, page_size: int = 1000, page_token: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     mindate = mindate.replace("/", "-")
     maxdate = maxdate.replace("/", "-")
     
@@ -33,13 +30,10 @@ def search_ct_history(mindate: str, maxdate: str, query=SURGERY_CT_QUERY, page_s
     
     studies = data.get("studies", [])
     next_page = data.get("nextPageToken")
-    total_count = data.get("totalCount", 0) # totalCount is often omitted unless countTotal=true, but we can just page.
     return studies, next_page
 
-def parse_ct_study(study_json):
-    """
-    Extract relevant fields from a CT study JSON to a normalized dict similar to pubmed docs.
-    """
+
+def parse_ct_study(study_json: Dict[str, Any]) -> Dict[str, Any]:
     protocol = study_json.get("protocolSection", {})
     ident_mod = protocol.get("identificationModule", {})
     status_mod = protocol.get("statusModule", {})
@@ -52,7 +46,7 @@ def parse_ct_study(study_json):
     
     brief_summary = desc_mod.get("briefSummary", "")
     detailed_desc = desc_mod.get("detailedDescription", "")
-    full_text = f"{brief_summary}\\n\\n{detailed_desc}".strip()
+    full_text = f"{brief_summary}\n\n{detailed_desc}".strip()
     
     conditions = cond_mod.get("conditions", [])
     
@@ -64,12 +58,12 @@ def parse_ct_study(study_json):
     return {
         "nctId": nct_id,
         "title": title,
-        "abstract": brief_summary, # treat summary as abstract
-        "full_text": full_text,    # treat summary + desc as full text for chunking
+        "abstract": brief_summary,
+        "full_text": full_text,
         "mesh_terms": conditions,
         "pub_types": pub_types,
         "journal": "ClinicalTrials.gov",
         "doi": "",
         "pmcid": "",
-        "edat": last_update, # use last update as the sync anchor
+        "edat": last_update,
     }

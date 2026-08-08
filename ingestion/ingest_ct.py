@@ -1,15 +1,19 @@
 import uuid
+from typing import List, Dict, Any, Tuple
+
+from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
-from chunking import chunk_text
-from config import QDRANT_COLLECTION
-from embedder import embed_articles
-from logsetup import get_logger
-from ingest import UPSERT_BATCH
+
+from core.chunking import chunk_text
+from core.config import QDRANT_COLLECTION
+from services.embedder import embed_articles
+from core.logsetup import get_logger
+from ingestion.ingest import UPSERT_BATCH
 
 log = get_logger(__name__)
 NAMESPACE = uuid.NAMESPACE_DNS
 
-def _payload_ct(doc, **extra):
+def _payload_ct(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
     base = {
         "doc_type": "clinical_trial",
         "nctId": doc["nctId"],
@@ -22,12 +26,8 @@ def _payload_ct(doc, **extra):
     base.update(extra)
     return base
 
-def ingest_trials(client, trials):
-    """
-    Takes parsed trial dicts.
-    Returns (points_written, articles_written)
-    """
-    entries = []  # (doc, section, text)
+def ingest_trials(client: QdrantClient, trials: List[Dict[str, Any]]) -> Tuple[int, int]:
+    entries = []
     for doc in trials:
         entries.append((doc, "abstract", doc["abstract"]))
         n_chunks = 0

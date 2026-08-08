@@ -41,7 +41,7 @@ jobs:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           UNPAYWALL_EMAIL: ${{ secrets.UNPAYWALL_EMAIL }}
-        run: uv run python sync.py
+        run: uv run python jobs/sync.py
 
       - name: Recheck full text on previously abstract-only docs
         env:
@@ -50,7 +50,7 @@ jobs:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           UNPAYWALL_EMAIL: ${{ secrets.UNPAYWALL_EMAIL }}
-        run: uv run python recheck_fulltext.py
+        run: uv run python jobs/recheck_fulltext.py
 
       - name: Upload run log
         if: always()

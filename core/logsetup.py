@@ -1,22 +1,18 @@
-"""One shared logger config: console + rotating file, so every script's run
-history (what got added, what failed) survives between cron/manual runs."""
 import datetime
 import json
 import logging
 import os
+from typing import Any, Dict
 
-LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs"))
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Generate a single timestamp for the entire run so all loggers and events share the same files
 RUN_TIMESTAMP = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-# JSON history is now dynamically generated in record_event
 
-
-def get_logger(name):
+def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
-    if logger.handlers:  # avoid duplicate handlers if called twice
+    if logger.handlers:
         return logger
     logger.setLevel(logging.INFO)
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S")
@@ -34,9 +30,7 @@ def get_logger(name):
     return logger
 
 
-def record_event(event_type, **kwargs):
-    """Append a structured event to a single metrics log file for the project.
-    On GitHub Actions, this single file gets committed to track history."""
+def record_event(event_type: str, **kwargs: Any) -> Dict[str, Any]:
     history_file = os.path.join(LOG_DIR, "sync_history.jsonl")
     event = {
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),

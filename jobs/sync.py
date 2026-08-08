@@ -1,27 +1,24 @@
-"""Daily incremental sync: read back the newest edat already in Qdrant,
-pull everything PubMed has added since then (datetype=edat - catches
-articles by indexing date, not publish date, so nothing is missed to
-PubMed's own indexing lag), ingest it. Meant to run on a cron (see
-.github/workflows/daily_sync.yml)."""
 import datetime
+import argparse
+from typing import Optional
 
+from qdrant_client import QdrantClient
 from qdrant_client.models import Direction, FieldCondition, Filter, MatchValue, OrderBy
 
-from config import QDRANT_COLLECTION, SURGERY_MESH_QUERY
-from ingest import ingest_articles
-from logsetup import get_logger, record_event
-from pubmed_client import efetch_history_batch, esearch_history
-from qdrant_setup import ensure_collection
+from core.config import QDRANT_COLLECTION, SURGERY_MESH_QUERY
+from ingestion.ingest import ingest_articles
+from core.logsetup import get_logger, record_event
+from clients.pubmed_client import efetch_history_batch, esearch_history
+from core.qdrant_setup import ensure_collection
+from clients.clinicaltrials_client import search_ct_history, parse_ct_study
+from ingestion.ingest_ct import ingest_trials
 
 log = get_logger(__name__)
 BATCH_SIZE = 200
-LOOKBACK_DAYS = 1  # small overlap buffer (EDAT is day-granularity); upsert is
-                    # idempotent so re-touching a day is harmless, but a wider
-                    # margin means needlessly re-fetching/re-embedding articles
-                    # already ingested on every single run
+LOOKBACK_DAYS = 1
 
 
-def get_watermark(client):
+def get_watermark(client: QdrantClient) -> Optional[str]:
     points, _ = client.scroll(
         collection_name=QDRANT_COLLECTION,
         scroll_filter=Filter(must=[FieldCondition(key="section", match=MatchValue(value="abstract"))]),
@@ -32,12 +29,7 @@ def get_watermark(client):
     return points[0].payload.get("edat") if points else None
 
 
-def run_sync(limit=None, days=None):
-    """limit: cap the number of articles processed this run - handy for a
-    quick test without waiting out a full window.
-    days: override the window to `today - days`, ignoring the watermark -
-    for bootstrapping a fresh collection where there's no watermark yet to
-    follow. Normal incremental runs should leave this as None."""
+def run_sync(limit: Optional[int] = None, days: Optional[int] = None) -> int:
     client = ensure_collection()
     watermark = get_watermark(client)
     if days is not None:
@@ -78,10 +70,7 @@ def run_sync(limit=None, days=None):
     return written
 
 
-from clinicaltrials_client import search_ct_history, parse_ct_study
-from ingest_ct import ingest_trials
-
-def get_watermark_ct(client):
+def get_watermark_ct(client: QdrantClient) -> Optional[str]:
     points, _ = client.scroll(
         collection_name=QDRANT_COLLECTION,
         scroll_filter=Filter(must=[
@@ -94,7 +83,8 @@ def get_watermark_ct(client):
     )
     return points[0].payload.get("edat") if points else None
 
-def run_sync_ct(limit=None, days=None):
+
+def run_sync_ct(limit: Optional[int] = None, days: Optional[int] = None) -> int:
     client = ensure_collection()
     watermark = get_watermark_ct(client)
     if days is not None:
@@ -141,8 +131,6 @@ def run_sync_ct(limit=None, days=None):
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="cap articles processed (quick tests)")
     parser.add_argument("--days", type=int, default=None, help="bootstrap window: today - days, ignores watermark")

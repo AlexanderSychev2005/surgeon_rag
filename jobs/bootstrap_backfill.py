@@ -1,29 +1,24 @@
-"""One-time historical backfill: page through the full result set for
-SURGERY_MESH_QUERY within a date window via esearch history + efetch retstart,
-ingesting (embed + upsert, with full-text resolution) as we go.
-
-Bounded by pub_date (pdat), not edat - EDAT freshness only matters for the
-separate daily incremental sync (see pubmed_client.esearch_pmids datetype='edat')."""
 import sys
 import time
+import argparse
+from typing import Optional
 
-from config import SURGERY_MESH_QUERY
-from ingest import ingest_articles
-from logsetup import get_logger
-from pubmed_client import efetch_history_batch, esearch_history
-from qdrant_setup import ensure_collection
+from core.config import SURGERY_MESH_QUERY
+from ingestion.ingest import ingest_articles
+from core.logsetup import get_logger
+from clients.pubmed_client import efetch_history_batch, esearch_history
+from core.qdrant_setup import ensure_collection
 
 log = get_logger(__name__)
 BATCH_SIZE = 200
 
 
-def count_window(mindate, maxdate):
-    """Cheap: just asks how many articles match, doesn't fetch them."""
+def count_window(mindate: str, maxdate: str) -> int:
     _, _, count = esearch_history(SURGERY_MESH_QUERY, mindate=mindate, maxdate=maxdate)
     return count
 
 
-def run_backfill(mindate, maxdate, limit=None, batch_size=BATCH_SIZE):
+def run_backfill(mindate: str, maxdate: str, limit: Optional[int] = None, batch_size: int = BATCH_SIZE) -> int:
     client = ensure_collection()
     webenv, query_key, count = esearch_history(SURGERY_MESH_QUERY, mindate=mindate, maxdate=maxdate)
     total = min(count, limit) if limit else count
@@ -44,17 +39,9 @@ def run_backfill(mindate, maxdate, limit=None, batch_size=BATCH_SIZE):
     return written
 
 
-def demo():
-    checked, upgraded = None, None  # not applicable here
-    n = run_backfill(mindate="2024/01/01", maxdate="2024/01/31", limit=10, batch_size=10)
-    assert n == 10
-    print(f"OK: backfilled {n} articles from a bounded test window")
-
-
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["count", "run", "demo"])
+    parser.add_argument("action", choices=["count", "run"])
     parser.add_argument("--mindate", default="2025/08/08")
     parser.add_argument("--maxdate", default="2026/08/08")
     parser.add_argument("--limit", type=int, default=None)
@@ -64,5 +51,3 @@ if __name__ == "__main__":
         print(count_window(args.mindate, args.maxdate))
     elif args.action == "run":
         run_backfill(mindate=args.mindate, maxdate=args.maxdate, limit=args.limit)
-    else:
-        demo()

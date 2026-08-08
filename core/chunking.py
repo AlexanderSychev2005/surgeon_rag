@@ -1,8 +1,6 @@
-"""Naive paragraph-based chunker, sized to fit comfortably next to a title
-inside MedCPT's 512-token window (~4 chars/token -> keep chunks ~1200 chars)."""
+from typing import List
 
-
-def chunk_text(text, max_chars=1200):
+def chunk_text(text: str, max_chars: int = 1200) -> List[str]:
     paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
     chunks, current = [], ""
     for p in paragraphs:

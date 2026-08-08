@@ -1,20 +1,13 @@
-"""Best-effort legal full text acquisition, in order:
-1) PMC Open Access S3 bucket (pmc-oa-opendata) - fastest, plain text, no lag
-   even for articles added to PMC today (unlike Europe PMC below).
-2) Europe PMC fullTextXML - covers PMC Open Access too, kept as a fallback
-   since its indexing lags PMC's own OA bucket by some time.
-3) Unpaywall -> best OA location -> PDF text extraction (non-PMC OA copies).
-4) abstract only (caller's fallback).
-"""
 import io
 import os
 import xml.etree.ElementTree as ET
+from typing import Optional, Tuple
 
 import requests
 from dotenv import load_dotenv
 from pypdf import PdfReader
 
-from logsetup import get_logger
+from core.logsetup import get_logger
 
 load_dotenv()
 log = get_logger(__name__)
@@ -25,26 +18,22 @@ UNPAYWALL_API = "https://api.unpaywall.org/v2/{doi}"
 UNPAYWALL_EMAIL = os.environ.get("UNPAYWALL_EMAIL", "")
 
 
-def _text_from_europepmc_xml(xml_bytes):
+def _text_from_europepmc_xml(xml_bytes: bytes) -> str:
     root = ET.fromstring(xml_bytes)
     parts = [p.text for p in root.iter("p") if p.text]
     return "\n".join(parts).strip()
 
 
-def _text_from_pdf_url(url):
+def _text_from_pdf_url(url: str) -> Optional[str]:
     r = requests.get(url, timeout=30, headers={"User-Agent": "medical-rag-research/0.1"})
     r.raise_for_status()
     if not r.content.startswith(b"%PDF"):
-        # Content-Type/.pdf-suffix heuristics both lie in practice (landing
-        # pages, login walls) - the magic number is the only reliable check.
         return None
     reader = PdfReader(io.BytesIO(r.content))
     return "\n".join((p.extract_text() or "") for p in reader.pages).strip()
 
 
-def get_full_text(pmcid=None, doi=None):
-    """Returns (text, source) where source is one of
-    'pmc_oa', 'europepmc', 'unpaywall', or (None, None) if nothing found."""
+def get_full_text(pmcid: Optional[str] = None, doi: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     if pmcid:
         try:
             r = requests.get(PMC_OA_S3.format(pmcid=pmcid), timeout=20)
@@ -78,7 +67,7 @@ def get_full_text(pmcid=None, doi=None):
                 if pdf_url:
                     try:
                         text = _text_from_pdf_url(pdf_url)
-                    except Exception as e:  # pypdf can raise many distinct error types on malformed PDFs
+                    except Exception as e:
                         log.warning(f"pdf extraction failed for {doi} ({pdf_url}): {e}")
                         text = None
                     if text:
@@ -90,14 +79,3 @@ def get_full_text(pmcid=None, doi=None):
 
     log.info(f"no full text found (pmcid={pmcid}, doi={doi}) — abstract only")
     return None, None
-
-
-def demo():
-    # a known PMC-OA article (Bassi et al., pancreatic surgery outcomes definitions - open access)
-    text, source = get_full_text(pmcid="PMC5013675")
-    assert text and source == "pmc_oa", f"expected pmc_oa full text, got source={source}"
-    print(f"OK: {source} full text, {len(text)} chars")
-
-
-if __name__ == "__main__":
-    demo()

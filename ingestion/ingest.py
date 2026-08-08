@@ -1,36 +1,29 @@
-"""Embed abstracts (+ full-text chunks when available) and upsert into Qdrant.
-One PointStruct per abstract (id = int(pmid)) plus one per full-text chunk
-(deterministic uuid5 id, so re-running ingest on the same article is a no-op
-upsert, not a duplicate)."""
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Any, Tuple, Optional
 
+from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
-from chunking import chunk_text
-from config import QDRANT_COLLECTION
-from embedder import embed_articles
-from fulltext import get_full_text
-from logsetup import get_logger
+from core.chunking import chunk_text
+from core.config import QDRANT_COLLECTION
+from services.embedder import embed_articles
+from services.fulltext import get_full_text
+from core.logsetup import get_logger
 
 log = get_logger(__name__)
 NAMESPACE = uuid.NAMESPACE_DNS
-UPSERT_BATCH = 64  # a full ingest batch (~200 articles) can be 1000s of chunk
-                    # points; upserting them in one HTTP call risks the server
-                    # dropping the connection mid-request (seen in practice)
-FULLTEXT_WORKERS = 16  # full-text resolution is network I/O (PMC/EuropePMC/
-                        # Unpaywall calls), not CPU - a plain sequential loop
-                        # over ~200 articles/batch was the dominant time cost
-                        # in practice (~1-2s per article even on a miss)
+UPSERT_BATCH = 64
+FULLTEXT_WORKERS = 16
 
 
-def _fetch_full_text(doc):
+def _fetch_full_text(doc: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     if doc.get("pmcid") or doc.get("doi"):
         return get_full_text(pmcid=doc.get("pmcid"), doi=doc.get("doi"))
     return None, None
 
 
-def _payload(doc, **extra):
+def _payload(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
     base = {
         "doc_type": "pubmed_article",
         "pmid": int(doc["pmid"]),
@@ -47,15 +40,14 @@ def _payload(doc, **extra):
     return base
 
 
-def ingest_articles(client, articles, fetch_full_text=True):
-    """Returns (points_written, articles_with_full_text)."""
+def ingest_articles(client: QdrantClient, articles: List[Dict[str, Any]], fetch_full_text: bool = True) -> Tuple[int, int, Dict[str, int], int]:
     if fetch_full_text:
         with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
             full_text_results = list(pool.map(_fetch_full_text, articles))
     else:
         full_text_results = [(None, None)] * len(articles)
 
-    entries = []  # (doc, section, text, source)
+    entries = []
     for doc, (full_text, ft_source) in zip(articles, full_text_results):
         entries.append((doc, "abstract", doc["abstract"], "pubmed_abstract"))
         n_chunks = 0
@@ -66,12 +58,12 @@ def ingest_articles(client, articles, fetch_full_text=True):
                 entries.append((doc, f"fulltext_{i}", chunk, ft_source))
         log.info(
             f"ingest pmid={doc['pmid']} title={doc['title'][:60]!r} "
-            f"full_text={'yes:' + ft_source if n_chunks else 'no'} chunks={n_chunks}"
+            f"full_text={'yes:' + str(ft_source) if n_chunks else 'no'} chunks={n_chunks}"
         )
 
     if not entries:
         log.info("ingest_articles: nothing to write (empty input)")
-        return 0, 0
+        return 0, 0, {}, 0
 
     pairs = [[doc["title"], text] for doc, _, text, _ in entries]
     vectors = embed_articles(pairs)
@@ -100,22 +92,3 @@ def ingest_articles(client, articles, fetch_full_text=True):
     
     fulltext_points = sum(1 for _, section, _, _ in entries if section != "abstract")
     return len(points), len(has_full_text), source_counts, fulltext_points
-
-
-def demo():
-    from config import SURGERY_MESH_QUERY
-    from pubmed_client import efetch_articles, esearch_pmids
-    from qdrant_setup import ensure_collection
-
-    client = ensure_collection()
-    pmids = esearch_pmids(SURGERY_MESH_QUERY, retmax=5)
-    articles = efetch_articles(pmids)
-    n_points, n_full, sources, ft_points = ingest_articles(client, articles)
-    assert n_points >= len(articles), (n_points, len(articles))
-    count = client.count(QDRANT_COLLECTION).count
-    print(f"OK: wrote {n_points} points ({n_full}/{len(articles)} articles had full text), "
-          f"collection now has {count} points total. Sources: {sources}")
-
-
-if __name__ == "__main__":
-    demo()

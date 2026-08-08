@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PayloadSchemaType, VectorParams
 
-from config import QDRANT_COLLECTION, VECTOR_SIZE
+from core.config import QDRANT_COLLECTION, VECTOR_SIZE
 
 load_dotenv()
 
@@ -22,11 +22,11 @@ INDEXED_FIELDS = {
 }
 
 
-def get_client():
+def get_client() -> QdrantClient:
     return QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
 
 
-def ensure_collection():
+def ensure_collection() -> QdrantClient:
     client = get_client()
     if not client.collection_exists(QDRANT_COLLECTION):
         client.create_collection(

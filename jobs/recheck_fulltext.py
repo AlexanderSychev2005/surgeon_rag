@@ -1,9 +1,6 @@
-"""Periodic job: some articles have no full text at ingest time because the
-publisher's PMC deposit is embargoed (common: 6-12 months post-publication).
-This scrolls Qdrant for abstract points still flagged has_full_text=false,
-retries the resolution chain, and upserts newly-found full-text chunks."""
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from typing import Tuple, Optional
 
 from qdrant_client.models import (
     FieldCondition,
@@ -12,13 +9,13 @@ from qdrant_client.models import (
     PointStruct,
 )
 
-from config import QDRANT_COLLECTION
-from chunking import chunk_text
-from embedder import embed_articles
-from fulltext import get_full_text
-from ingest import FULLTEXT_WORKERS, UPSERT_BATCH
-from logsetup import get_logger, record_event
-from qdrant_setup import get_client
+from core.config import QDRANT_COLLECTION
+from core.chunking import chunk_text
+from services.embedder import embed_articles
+from services.fulltext import get_full_text
+from ingestion.ingest import FULLTEXT_WORKERS, UPSERT_BATCH
+from core.logsetup import get_logger, record_event
+from core.qdrant_setup import get_client
 
 log = get_logger(__name__)
 NAMESPACE = uuid.NAMESPACE_DNS
@@ -31,7 +28,7 @@ PENDING_FILTER = Filter(
 )
 
 
-def recheck(batch_size=50, max_batches=None):
+def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[int, int]:
     client = get_client()
     upgraded, checked, offset, batches = 0, 0, None, 0
     source_counts = {}
@@ -95,12 +92,6 @@ def recheck(batch_size=50, max_batches=None):
     return checked, upgraded
 
 
-def demo():
-    checked, upgraded = recheck(batch_size=50, max_batches=1)
-    print(f"OK: checked {checked} pending docs, upgraded {upgraded} to full text")
-
-
 if __name__ == "__main__":
-    # full run (no max_batches cap) - this is what the daily cron calls
     checked, upgraded = recheck(batch_size=50)
     print(f"OK: checked {checked} pending docs, upgraded {upgraded} to full text")
