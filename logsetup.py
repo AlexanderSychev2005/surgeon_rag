@@ -4,15 +4,14 @@ import datetime
 import json
 import logging
 import os
-from logging.handlers import RotatingFileHandler
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# One JSON line per sync/recheck run - committed to the repo by CI (unlike
-# logs/, which is gitignored and only kept as a 30-day workflow artifact) so
-# "what changed and when" is readable straight from GitHub, no download needed.
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "sync_history.jsonl")
+# Generate a single timestamp for the entire run so all loggers and events share the same files
+RUN_TIMESTAMP = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+# JSON history is now dynamically generated in record_event
 
 
 def get_logger(name):
@@ -26,8 +25,8 @@ def get_logger(name):
     console.setFormatter(fmt)
     logger.addHandler(console)
 
-    file_handler = RotatingFileHandler(
-        os.path.join(LOG_DIR, "medical_rag.log"), maxBytes=5_000_000, backupCount=5, encoding="utf-8"
+    file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, f"medical_rag_{RUN_TIMESTAMP}.log"), encoding="utf-8"
     )
     file_handler.setFormatter(fmt)
     logger.addHandler(file_handler)
@@ -35,14 +34,16 @@ def get_logger(name):
     return logger
 
 
-def record_event(script, **fields):
-    """Append a one-line run summary, e.g.
-    record_event("sync", window="2026/08/04..2026/08/07", matched=1532, written=1532, with_full_text=410)"""
-    entry = {
-        "run_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "script": script,
-        **fields,
+def record_event(event_type, **kwargs):
+    """Append a structured event to a single metrics log file for the project.
+    On GitHub Actions, this single file gets committed to track history."""
+    history_file = os.path.join(LOG_DIR, "sync_history.jsonl")
+    event = {
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "run_id": RUN_TIMESTAMP,
+        "event": event_type,
+        **kwargs
     }
-    with open(HISTORY_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    return entry
+    with open(history_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(event, ensure_ascii=False) + "\n")
+    return event

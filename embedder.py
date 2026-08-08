@@ -31,7 +31,7 @@ def embed_queries(queries):
 
 
 @torch.no_grad()
-def embed_articles(title_text_pairs, batch_size=64):
+def embed_articles(title_text_pairs, batch_size=256):
     """title_text_pairs: list[[title, text]] -> (N, 768) float32 array.
     `text` is the abstract for the main doc, or a full-text chunk when we
     embed chunks - keeping the [title, X] pair format matches how the model

@@ -34,7 +34,7 @@ def run_backfill(mindate, maxdate, limit=None, batch_size=BATCH_SIZE):
     for start in range(0, total, batch_size):
         retmax = min(batch_size, total - start)
         articles = efetch_history_batch(webenv, query_key, retstart=start, retmax=retmax)
-        n_points, n_full = ingest_articles(client, articles)
+        n_points, n_full, sources, ft_points = ingest_articles(client, articles)
         written += len(articles)
         elapsed = time.time() - start_time
         rate = written / elapsed if elapsed > 0 else 0
@@ -52,10 +52,17 @@ def demo():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "count":
-        # usage: python bootstrap_backfill.py count 2018/01/01 3000
-        mindate = sys.argv[2] if len(sys.argv) > 2 else "2016/01/01"
-        maxdate = sys.argv[3] if len(sys.argv) > 3 else "3000"
-        print(count_window(mindate, maxdate))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("action", choices=["count", "run", "demo"])
+    parser.add_argument("--mindate", default="2025/08/08")
+    parser.add_argument("--maxdate", default="2026/08/08")
+    parser.add_argument("--limit", type=int, default=None)
+    args = parser.parse_args()
+
+    if args.action == "count":
+        print(count_window(args.mindate, args.maxdate))
+    elif args.action == "run":
+        run_backfill(mindate=args.mindate, maxdate=args.maxdate, limit=args.limit)
     else:
         demo()

@@ -1,0 +1,305 @@
+{
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT06783530",
+          "orgStudyIdInfo": {
+            "id": "A02012024OS"
+          },
+          "organization": {
+            "fullName": "Mansoura University",
+            "class": "OTHER"
+          },
+          "briefTitle": "Psychological and Clinical Outcomes of Splint Therapy with and Without Doctor-Patient Communication in TMD Management",
+          "officialTitle": "Psychological and Clinical Outcomes After Splint Therapy with Versus Without Doctor-patient Communication Concept in the Management of TMDs",
+          "acronym": "TMD"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2025-01",
+          "overallStatus": "COMPLETED",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2023-07-01",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2024-10-15",
+            "type": "ACTUAL"
+          },
+          "completionDateStruct": {
+            "date": "2024-10-30",
+            "type": "ACTUAL"
+          },
+          "studyFirstSubmitDate": "2025-01-09",
+          "studyFirstSubmitQcDate": "2025-01-14",
+          "studyFirstPostDateStruct": {
+            "date": "2025-01-20",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2025-01-14",
+          "lastUpdatePostDateStruct": {
+            "date": "2025-01-20",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR_INVESTIGATOR",
+            "investigatorFullName": "Soaad Tolba Mohammed Tolba Badawi",
+            "investigatorTitle": "lecturer of oral and maxillofacial department, faculty of dentistry, Mansoura university",
+            "investigatorAffiliation": "Mansoura University"
+          },
+          "leadSponsor": {
+            "name": "Soaad Tolba Mohammed Tolba Badawi",
+            "class": "OTHER"
+          }
+        },
+        "oversightModule": {
+          "oversightHasDmc": false,
+          "isFdaRegulatedDrug": false,
+          "isFdaRegulatedDevice": false,
+          "isUsExport": false
+        },
+        "descriptionModule": {
+          "briefSummary": "This study aimed to evaluate the psychological and clinical outcomes of patients undergoing splint therapy with or without enhanced doctor-patient communication in the management of temporomandibular disorders (TMDs). The study compared treatment approaches to determine their impact on patient satisfaction and clinical results.",
+          "detailedDescription": "Temporomandibular disorders (TMDs) are prevalent conditions characterized by jaw pain, functional limitations, and psychological distress. This study investigated the impact of splint therapy combined with enhanced doctor-patient communication on psychological well-being and clinical outcomes. Participants were randomly assigned to receive standard splint therapy or splint therapy with additional doctor-patient communication strategies. The primary outcomes include clinical and psychological status improvements, measured over six months, and patient satisfaction, assessed over a one-year period. The results aimed to provide insights into optimizing treatment strategies for TMD patients."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Temporomandibular Disorders (TMDs)"
+          ],
+          "keywords": [
+            "Splint Therapy",
+            "Doctor-Patient Communication",
+            "Non-Surgical TMD Treatment",
+            "TMDs management"
+          ]
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": [
+            "NA"
+          ],
+          "designInfo": {
+            "allocation": "RANDOMIZED",
+            "interventionModel": "PARALLEL",
+            "interventionModelDescription": "This study used a parallel assignment model with two groups: one receiving standard splint therapy and the other receiving splint therapy with enhanced doctor-patient communication.",
+            "primaryPurpose": "TREATMENT",
+            "maskingInfo": {
+              "masking": "DOUBLE",
+              "maskingDescription": "The allocation was concealed from participants and the statistician performing the data analysis to minimize bias. However, the clinician administering the intervention was aware of the patient's allocation to ensure appropriate treatment delivery.",
+              "whoMasked": [
+                "PARTICIPANT",
+                "OUTCOMES_ASSESSOR"
+              ]
+            }
+          },
+          "enrollmentInfo": {
+            "count": 435,
+            "type": "ACTUAL"
+          }
+        },
+        "armsInterventionsModule": {
+          "armGroups": [
+            {
+              "label": "Splint Therapy with Enhanced Doctor-Patient Communication",
+              "type": "EXPERIMENTAL",
+              "description": "Participants in this arm received splint therapy along with structured doctor-patient communication to improve treatment outcomes.",
+              "interventionNames": [
+                "Behavioral: Splint Therapy with Enhanced Doctor-Patient Communication"
+              ]
+            },
+            {
+              "label": "Standard Splint Therapy",
+              "type": "ACTIVE_COMPARATOR",
+              "description": "Participants in this group received standard splint therapy for the management of temporomandibular disorders (TMD). The splint was fitted and adjusted by a qualified clinician, and participants was monitored for outcomes such as pain reduction, jaw function, and patient satisfaction.",
+              "interventionNames": [
+                "Device: Splint Therapy"
+              ]
+            }
+          ],
+          "interventions": [
+            {
+              "type": "BEHAVIORAL",
+              "name": "Splint Therapy with Enhanced Doctor-Patient Communication",
+              "description": "A structured communication protocol aimed at improving doctor-patient interaction and treatment adherence.",
+              "armGroupLabels": [
+                "Splint Therapy with Enhanced Doctor-Patient Communication"
+              ]
+            },
+            {
+              "type": "DEVICE",
+              "name": "Splint Therapy",
+              "description": "A custom-fitted occlusal splint designed to alleviate symptoms of temporomandibular disorders (TMD).",
+              "armGroupLabels": [
+                "Standard Splint Therapy"
+              ]
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "Change in Depression, Anxiety, and Stress levels",
+              "description": "Depression, anxiety, and stress levels was measured using the 10-item Depression, Anxiety, and Stress Scale (DASS-10) at baseline and after six months of therapy. The DASS-10 comprises 10 items, each rated on a 4-point Likert scale ranging from 0 (\"Did not apply to me at all\") to 3 (\"Applied to me very much or most of the time\").\n\n* Minimum value: 0\n* Maximum value: 30\n* Interpretation: Higher scores indicate worse psychological outcomes.",
+              "timeFrame": "Baseline to 6 months."
+            },
+            {
+              "measure": "Change in Interincisal Mouth Opening",
+              "description": "Maximum interincisal mouth opening was measured at baseline and after six months of therapy using a calibrated caliper.",
+              "timeFrame": "Baseline to 6 months."
+            },
+            {
+              "measure": "Change in Intra-articular pain (IAP)",
+              "description": "Intra-articular pain was assessed at baseline and after six months using the Visual Analog Scale (VAS) for pain intensity. The scale ranged from 0 to 10, where:\n\n* Minimum value: 0 (No pain)\n* Maximum value: 10 (Worst possible pain).",
+              "timeFrame": "Baseline to 6 months."
+            },
+            {
+              "measure": "Change in Joint Sound Presence and Characteristics",
+              "description": "Joint Sounds were measured in scores from 0 to 5, where 0 = no joint sound, 1 = Joint noise on occasion, 2 = palpable clicking, 3 = audible clicking, 4 = absence of previous clicking (closed lock), and 5 = crepitation. Assessment of the presence and characteristics of joint sounds was performed at baseline and after six months of therapy.",
+              "timeFrame": "Baseline to 6 months."
+            }
+          ],
+          "secondaryOutcomes": [
+            {
+              "measure": "Change in Masticatory Muscle Pain Intensity",
+              "description": "Pain intensity in the masticatory muscles (e.g., masseter, temporalis, medial pterygoid, lateral pterygoid) was assessed by palpation at specific points, which uses a pain scale from zero to three (0: pressure only; 1: mild pain; 2: moderate pain; 3: severe pain). Pain assisted by palpation pressure (1kg pressure for 5sec) as defined in DC/TMD.",
+              "timeFrame": "Baseline to 6 months."
+            },
+            {
+              "measure": "Patient Satisfaction with Treatment",
+              "description": "Each patient was evaluated at 6 and 12 months after intervention. The patient satisfaction questionnaire comprised two questions assessed using a 10-point Likert scale (1 = extremely dissatisfied to 10 = perfect/strongly satisfied).\n\n* Overall satisfaction with the clinical result of the treatment.\n* Satisfaction with the fulfillment of postoperative expectations.",
+              "timeFrame": "From 6 months to 1-year post-intervention."
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n* patients complaining of pain in the orofacial region (either arthrogenous and/or myogenous TMD) in the last 3 months, who never underwent any type of treatment for TMD's.\n* Age \u226516 years.\n\nExclusion Criteria:\n\n* patients who have already undergone any treatment for TMD's, edentulous patients,\n* patients with any systemic disease that could cause joint and/or muscle changes,\n* patients who were undergoing drug treatment for the condition, current pregnancy, or breastfeeding.",
+          "healthyVolunteers": false,
+          "sex": "ALL",
+          "minimumAge": "16 Years",
+          "stdAges": [
+            "CHILD",
+            "ADULT",
+            "OLDER_ADULT"
+          ]
+        },
+        "contactsLocationsModule": {
+          "overallOfficials": [
+            {
+              "name": "Soaad Tolba Badawy, Lecturer of OMFS, MU",
+              "affiliation": "Faculty of dentistry, Mansoura university",
+              "role": "PRINCIPAL_INVESTIGATOR"
+            },
+            {
+              "name": "Mai Ahmed Haggag, Assistant Professor of OMFS",
+              "affiliation": "Faculty of dentistry, Mansoura university",
+              "role": "PRINCIPAL_INVESTIGATOR"
+            },
+            {
+              "name": "Christine Raouf Micheal, Assistant Professor",
+              "affiliation": "Prosthodontics Department, Faculty of dentistry, Mansoura university",
+              "role": "PRINCIPAL_INVESTIGATOR"
+            }
+          ],
+          "locations": [
+            {
+              "facility": "Faculty of Dentistry, Mansoura University",
+              "city": "Al Mansurah",
+              "state": "Dakahlia Governorate",
+              "zip": "35516",
+              "country": "Egypt",
+              "geoPoint": {
+                "lat": 31.03637,
+                "lon": 31.38069
+              }
+            }
+          ]
+        },
+        "referencesModule": {
+          "references": [
+            {
+              "pmid": "30978270",
+              "type": "BACKGROUND",
+              "citation": "de Barros Pascoal AL, de Freitas RFCP, da Silva LFG, Oliveira AGRC, Dos Santos Calderon P. Effectiveness of Counseling on Chronic Pain Management in Patients with Temporomandibular Disorders. J Oral Facial Pain Headache. 2020 Winter;34(1):77-82. doi: 10.11607/ofph.2163. Epub 2019 Apr 12."
+            },
+            {
+              "pmid": "40384540",
+              "type": "DERIVED",
+              "citation": "Haggag MA, Ibrahim CRM, Badawy ST. Psychological and Clinical Outcomes After Splint Therapy With Versus Without Doctor-Patient Communication Concept in the Management of TMDs: A Randomised Controlled Clinical Trial. J Oral Rehabil. 2025 Oct;52(10):1651-1663. doi: 10.1111/joor.14005. Epub 2025 May 19."
+            }
+          ],
+          "seeAlsoLinks": [
+            {
+              "label": "This link provides a collection of research articles related to splint therapy for temporomandibular disorders, which aligns with the focus of this study.",
+              "url": "https://pubmed.ncbi.nlm.nih.gov/?term=splint+therapy+for+temporomandibular+disorders.%22"
+            },
+            {
+              "label": "This link directs to a PubMed search for studies related to counselling as a treatment approach for temporomandibular disorders, which is relevant to this study's objectives.",
+              "url": "https://pubmed.ncbi.nlm.nih.gov/?term=counselling+for+temporomandibular+disorders.%22"
+            }
+          ],
+          "availIpds": [
+            {
+              "type": "Study Protocol",
+              "url": "https://dentfac.mans.edu.eg",
+              "comment": "Faculty of Dentistry, Mansoura University - Ethical Committee Information."
+            }
+          ]
+        },
+        "ipdSharingStatementModule": {
+          "ipdSharing": "UNDECIDED",
+          "description": "At this time, no decision has been made regarding the sharing of Individual Participant Data (IPD). Data-sharing plans will be determined based on institutional guidelines, ethical considerations, and journal requirements at the time of publication."
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-07"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D013705",
+              "term": "Temporomandibular Joint Disorders"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D017271",
+              "term": "Craniomandibular Disorders"
+            },
+            {
+              "id": "D008336",
+              "term": "Mandibular Diseases"
+            },
+            {
+              "id": "D007571",
+              "term": "Jaw Diseases"
+            },
+            {
+              "id": "D009140",
+              "term": "Musculoskeletal Diseases"
+            },
+            {
+              "id": "D007592",
+              "term": "Joint Diseases"
+            },
+            {
+              "id": "D009135",
+              "term": "Muscular Diseases"
+            },
+            {
+              "id": "D009057",
+              "term": "Stomatognathic Diseases"
+            }
+          ]
+        }
+      },
+      "hasResults": false
+    }
+  ],
+  "nextPageToken": "ZVdj7o2Elu8o3lp2Vcm44unumpOQJJxtbf0"
+}

@@ -32,6 +32,7 @@ def _fetch_full_text(doc):
 
 def _payload(doc, **extra):
     base = {
+        "doc_type": "pubmed_article",
         "pmid": int(doc["pmid"]),
         "title": doc["title"],
         "mesh_terms": doc["mesh_terms"],
@@ -92,7 +93,13 @@ def ingest_articles(client, articles, fetch_full_text=True):
         f"upserted {len(points)} points for {len(articles)} articles "
         f"({len(has_full_text)} with full text) into {QDRANT_COLLECTION!r}"
     )
-    return len(points), len(has_full_text)
+    source_counts = {}
+    for _, ft_source in full_text_results:
+        if ft_source:
+            source_counts[ft_source] = source_counts.get(ft_source, 0) + 1
+    
+    fulltext_points = sum(1 for _, section, _, _ in entries if section != "abstract")
+    return len(points), len(has_full_text), source_counts, fulltext_points
 
 
 def demo():
@@ -103,11 +110,11 @@ def demo():
     client = ensure_collection()
     pmids = esearch_pmids(SURGERY_MESH_QUERY, retmax=5)
     articles = efetch_articles(pmids)
-    n_points, n_full = ingest_articles(client, articles)
+    n_points, n_full, sources, ft_points = ingest_articles(client, articles)
     assert n_points >= len(articles), (n_points, len(articles))
     count = client.count(QDRANT_COLLECTION).count
     print(f"OK: wrote {n_points} points ({n_full}/{len(articles)} articles had full text), "
-          f"collection now has {count} points total")
+          f"collection now has {count} points total. Sources: {sources}")
 
 
 if __name__ == "__main__":

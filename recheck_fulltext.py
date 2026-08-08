@@ -34,6 +34,8 @@ PENDING_FILTER = Filter(
 def recheck(batch_size=50, max_batches=None):
     client = get_client()
     upgraded, checked, offset, batches = 0, 0, None, 0
+    source_counts = {}
+    ft_points = 0
 
     while True:
         points, offset = client.scroll(
@@ -58,8 +60,11 @@ def recheck(batch_size=50, max_batches=None):
             payload = point.payload
             if not full_text:
                 continue
+                
+            source_counts[source] = source_counts.get(source, 0) + 1
 
             chunks = chunk_text(full_text)
+            ft_points += len(chunks)
             pairs = [[payload["title"], c] for c in chunks]
             vectors = embed_articles(pairs)
             for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
@@ -86,7 +91,7 @@ def recheck(batch_size=50, max_batches=None):
             break
 
     log.info(f"recheck done: checked {checked}, upgraded {upgraded}")
-    record_event("recheck", checked=checked, upgraded=upgraded)
+    record_event("recheck", checked=checked, upgraded=upgraded, sources=source_counts, full_text_points=ft_points)
     return checked, upgraded
 
 
