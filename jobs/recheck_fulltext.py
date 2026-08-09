@@ -24,6 +24,12 @@ PENDING_FILTER = Filter(
     must=[
         FieldCondition(key="section", match=MatchValue(value="abstract")),
         FieldCondition(key="has_full_text", match=MatchValue(value=False)),
+        # PubMed only: this uses get_full_text (PMC/Europe PMC/Unpaywall by
+        # pmcid/doi), which doesn't understand preprint DOIs and would try to
+        # build a point id from payload["pmid"], a field medRxiv/bioRxiv
+        # points don't have at all - a medRxiv-specific recheck (its own PDF
+        # fetch, see ingestion/ingest_medrxiv.py) doesn't exist yet.
+        FieldCondition(key="doc_type", match=MatchValue(value="pubmed_article")),
     ]
 )
 
