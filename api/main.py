@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 class SearchFilters(BaseModel):
-    # "all", "pubmed_article", "clinical_trial", "medrxiv_preprint", "biorxiv_preprint"
+    # "all", "pubmed_article", "medrxiv_preprint"
     doc_type: str = "all"
     full_text_only: bool = False
 
@@ -66,20 +66,14 @@ def search(req: SearchRequest) -> Dict[str, Any]:
         relevance_pct = int((1 / (1 + math.exp(-raw_score))) * 100)
         
         raw_doc_type = r.get("doc_type")
-        if raw_doc_type == "clinical_trial":
-            doc_type_label = "Clinical Trial"
-        elif raw_doc_type in ("medrxiv_preprint", "biorxiv_preprint"):
-            doc_type_label = "Preprint (Not Peer-Reviewed)"
-        else:
-            doc_type_label = "PubMed Article"
+        doc_type_label = "Preprint (Not Peer-Reviewed)" if raw_doc_type == "medrxiv_preprint" else "PubMed Article"
             
         context_text += f"\n\nSource [{idx+1}] (Type: {doc_type_label}, Relevance: {relevance_pct}%, Title: {r.get('title')}):\n{text[:800]}..."
         
     prompt = f"""You are an advanced, helpful surgical assistant AI designed to answer complex medical questions based strictly on provided scientific literature.
 Please answer the user's question using only the sources below. 
 - You MUST reference the source numbers in your answer (e.g., [1], [2]).
-- Pay close attention to the "Type" and "Relevance" score of each source. Prioritize sources with higher relevance. 
-- Clinical trials usually provide higher quality of evidence than standard articles.
+- Pay close attention to the "Type" and "Relevance" score of each source. Prioritize sources with higher relevance.
 - Note that Preprints are not peer-reviewed and should be interpreted with caution.
 - Use clean Markdown formatting. If you cannot answer it from the sources, explicitly say so. Do not invent information.
 

@@ -3,12 +3,12 @@ import time
 import argparse
 from typing import Optional
 
-from core.config import PUBMED_QUERY
+from core.config import PUBMED_QUERY, MEDRXIV_CATEGORIES
 from ingestion.ingest import ingest_articles
 from core.logsetup import get_logger
 from clients.pubmed_client import efetch_history_batch, esearch_history
 from core.qdrant_setup import ensure_collection
-from clients.medrxiv_client import fetch_medrxiv_history, parse_medrxiv_paper
+from clients.preprint_client import fetch_by_category, parse_preprint
 from ingestion.ingest_medrxiv import ingest_preprints
 
 log = get_logger(__name__)
@@ -46,8 +46,8 @@ def run_backfill_medrxiv(mindate: str, maxdate: str, limit: Optional[int] = None
     log.info(f"backfill medrxiv window {mindate}..{maxdate}")
     
     start_time = time.time()
-    papers = fetch_medrxiv_history(mindate, maxdate)
-    parsed_papers = [parse_medrxiv_paper(p) for p in papers]
+    papers = fetch_by_category(mindate, maxdate, MEDRXIV_CATEGORIES)
+    parsed_papers = [parse_preprint(p) for p in papers]
     
     if limit:
         parsed_papers = parsed_papers[:limit]

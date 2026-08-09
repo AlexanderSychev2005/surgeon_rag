@@ -7,7 +7,6 @@ from qdrant_client.models import PointStruct
 
 from core.chunking import chunk_text
 from core.config import QDRANT_COLLECTION
-from core.domains import classify_mesh_domains
 from services.embedder import embed_articles
 from services.fulltext import get_full_text
 from core.logsetup import get_logger
@@ -25,16 +24,8 @@ def _fetch_full_text(doc: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]
 
 
 def _payload(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
-    # Prefer domains resolved by query membership (jobs/sync.py) - more
-    # accurate than re-deriving from mesh_terms, see jobs/sync.py for why.
-    # Falls back to the mesh_terms guess for callers that don't have that
-    # (e.g. jobs/bootstrap_backfill.py), which is still better than nothing.
-    domains = doc.get("domains")
-    if domains is None:
-        domains = classify_mesh_domains(doc["mesh_terms"])
     base = {
         "doc_type": "pubmed_article",
-        "domains": domains,
         "pmid": int(doc["pmid"]),
         "title": doc["title"],
         "mesh_terms": doc["mesh_terms"],

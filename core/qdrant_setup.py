@@ -10,7 +10,6 @@ load_dotenv()
 
 INDEXED_FIELDS = {
     "doc_type": PayloadSchemaType.KEYWORD,
-    "domains": PayloadSchemaType.KEYWORD,
     "category": PayloadSchemaType.KEYWORD,
     "pmid": PayloadSchemaType.INTEGER,
     "pub_types": PayloadSchemaType.KEYWORD,

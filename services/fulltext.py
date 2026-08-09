@@ -1,6 +1,5 @@
 import io
 import os
-import xml.etree.ElementTree as ET
 from typing import Optional, Tuple
 
 import requests
@@ -13,15 +12,8 @@ load_dotenv()
 log = get_logger(__name__)
 
 PMC_OA_S3 = "https://pmc-oa-opendata.s3.amazonaws.com/{pmcid}.1/{pmcid}.1.txt"
-EUROPEPMC_FULLTEXT = "https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/fullTextXML"
 UNPAYWALL_API = "https://api.unpaywall.org/v2/{doi}"
 UNPAYWALL_EMAIL = os.environ.get("UNPAYWALL_EMAIL", "")
-
-
-def _text_from_europepmc_xml(xml_bytes: bytes) -> str:
-    root = ET.fromstring(xml_bytes)
-    parts = [p.text for p in root.iter("p") if p.text]
-    return "\n".join(parts).strip()
 
 
 def _text_from_pdf_url(url: str) -> Optional[str]:
@@ -34,6 +26,12 @@ def _text_from_pdf_url(url: str) -> Optional[str]:
 
 
 def get_full_text(pmcid: Optional[str] = None, doi: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    """Europe PMC used to be a fallback here too, but checked across two real
+    bootstrap runs (700+ full-text hits): it never once contributed anything
+    PMC OA S3 hadn't already found - its full-text indexing lags PMC's own OA
+    bucket, so by the time we'd check it, PMC OA S3 had always already won.
+    Dropped it: one less network round-trip per PMC-eligible article for zero
+    measured benefit."""
     if pmcid:
         try:
             r = requests.get(PMC_OA_S3.format(pmcid=pmcid), timeout=20)
@@ -43,17 +41,6 @@ def get_full_text(pmcid: Optional[str] = None, doi: Optional[str] = None) -> Tup
             log.debug(f"pmc_oa miss for {pmcid}: HTTP {r.status_code}")
         except requests.RequestException as e:
             log.warning(f"pmc_oa request failed for {pmcid}: {e}")
-
-        try:
-            r = requests.get(EUROPEPMC_FULLTEXT.format(pmcid=pmcid), timeout=30)
-            if r.ok and r.content:
-                text = _text_from_europepmc_xml(r.content)
-                if text:
-                    log.info(f"full text via europepmc: {pmcid} ({len(text)} chars)")
-                    return text, "europepmc"
-            log.debug(f"europepmc miss for {pmcid}: HTTP {r.status_code}")
-        except (requests.RequestException, ET.ParseError) as e:
-            log.warning(f"europepmc request failed for {pmcid}: {e}")
 
     if doi:
         try:

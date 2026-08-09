@@ -65,7 +65,6 @@ function App() {
 
   const getSourceUrl = (result) => {
     if (result.pmid) return `https://pubmed.ncbi.nlm.nih.gov/${result.pmid}`;
-    if (result.nctId) return `https://clinicaltrials.gov/study/${result.nctId}`;
     if (result.doi) return `https://doi.org/${result.doi}`;
     return "#";
   };
@@ -206,16 +205,13 @@ function App() {
                       </span>
                     )}
                     <span className="badge type">
-                      {result.doc_type === 'clinical_trial' ? 'Clinical Trial'
-                        : (result.doc_type === 'medrxiv_preprint' || result.doc_type === 'biorxiv_preprint') ? 'Preprint (Not Peer-Reviewed)'
-                        : 'Article'}
+                      {result.doc_type === 'medrxiv_preprint' ? 'Preprint (Not Peer-Reviewed)' : 'Article'}
                     </span>
                     {result.has_full_text && (
                       <span className="badge fulltext">Full Text Available</span>
                     )}
                     {result.pub_date && <span>Date: {result.pub_date}</span>}
                     {result.journal && <span>Journal: {result.journal}</span>}
-                    {result.nctId && <span>NCT ID: {result.nctId}</span>}
                   </div>
 
                   <div className="result-snippet">
