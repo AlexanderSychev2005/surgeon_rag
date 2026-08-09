@@ -1,7 +1,10 @@
+import random
+import time
 import uuid
 from typing import List, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
+import requests
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
@@ -23,17 +26,32 @@ NAMESPACE = uuid.NAMESPACE_DNS
 FULLTEXT_WORKERS = 4
 
 
-def _fetch_preprint_pdf(doi: str, domain: str) -> str:
-    """Attempts to fetch the PDF text for a preprint DOI. domain: 'medrxiv.org' or 'biorxiv.org'."""
+def _fetch_preprint_pdf(doi: str, domain: str, max_retries: int = 2) -> str:
+    """Attempts to fetch the PDF text for a preprint DOI. domain: 'medrxiv.org' or 'biorxiv.org'.
+    Retries on 429 with backoff - unlike PMC embargoes (which are a "come
+    back in a few months" problem), preprints are open immediately, so a
+    failure here is transient (rate limit, network blip), worth a same-run
+    retry rather than waiting for some future recheck job."""
     if not doi:
         return ""
     url = f"https://www.{domain}/content/{doi}.full.pdf"
-    try:
-        text = _text_from_pdf_url(url)
-        return text if text else ""
-    except Exception as e:
-        log.warning(f"Failed to fetch {domain} PDF for {doi}: {e}")
-        return ""
+    for attempt in range(max_retries + 1):
+        try:
+            text = _text_from_pdf_url(url)
+            return text if text else ""
+        except requests.HTTPError as e:
+            is_last = attempt == max_retries
+            if e.response is not None and e.response.status_code == 429 and not is_last:
+                wait = 2 * (attempt + 1) + random.uniform(0, 1)  # jitter - several workers hit 429 together
+                log.debug(f"429 for {domain} PDF {doi}, retrying in {wait:.1f}s ({attempt + 1}/{max_retries})")
+                time.sleep(wait)
+                continue
+            log.warning(f"Failed to fetch {domain} PDF for {doi}: {e}")
+            return ""
+        except Exception as e:
+            log.warning(f"Failed to fetch {domain} PDF for {doi}: {e}")
+            return ""
+    return ""
 
 
 def _payload_preprint(doc: Dict[str, Any], doc_type: str, server: str, **extra: Any) -> Dict[str, Any]:
