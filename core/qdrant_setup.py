@@ -9,6 +9,9 @@ from core.config import QDRANT_COLLECTION, VECTOR_SIZE
 load_dotenv()
 
 INDEXED_FIELDS = {
+    "doc_type": PayloadSchemaType.KEYWORD,
+    "domains": PayloadSchemaType.KEYWORD,
+    "category": PayloadSchemaType.KEYWORD,
     "pmid": PayloadSchemaType.INTEGER,
     "pub_types": PayloadSchemaType.KEYWORD,
     "mesh_terms": PayloadSchemaType.KEYWORD,

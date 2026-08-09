@@ -6,6 +6,7 @@ from qdrant_client.models import PointStruct
 
 from core.chunking import chunk_text
 from core.config import QDRANT_COLLECTION
+from core.domains import classify_keyword_domains
 from services.embedder import embed_articles
 from core.logsetup import get_logger
 from ingestion.ingest import UPSERT_BATCH
@@ -16,6 +17,7 @@ NAMESPACE = uuid.NAMESPACE_DNS
 def _payload_ct(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
     base = {
         "doc_type": "clinical_trial",
+        "domains": classify_keyword_domains(f"{doc['title']} {doc['abstract']} {' '.join(doc['mesh_terms'])}"),
         "nctId": doc["nctId"],
         "title": doc["title"],
         "mesh_terms": doc["mesh_terms"],
@@ -48,11 +50,14 @@ def ingest_trials(client: QdrantClient, trials: List[Dict[str, Any]]) -> Tuple[i
     pairs = [[doc["title"], text] for doc, section, text in entries]
     vectors = embed_articles(pairs)
 
+    has_full_text = {doc["nctId"] for doc, section, _ in entries if section != "abstract"}
+
     points = [
         PointStruct(
             id=str(uuid.uuid5(NAMESPACE, f"nctId:{doc['nctId']}:{section}")),
             vector=vector.tolist(),
-            payload=_payload_ct(doc, section=section, text=text, source="clinicaltrials.gov"),
+            payload=_payload_ct(doc, section=section, text=text, source="clinicaltrials.gov",
+                                  has_full_text=doc["nctId"] in has_full_text),
         )
         for (doc, section, text), vector in zip(entries, vectors)
     ]

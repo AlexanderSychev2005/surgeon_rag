@@ -4,15 +4,16 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from core.config import CT_QUERY
+
 CT_API_BASE = "https://clinicaltrials.gov/api/v2/studies"
-SURGERY_CT_QUERY = "Surgery OR Surgical"
 
 session = requests.Session()
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
 session.mount('https://', HTTPAdapter(max_retries=retries))
 
 
-def search_ct_history(mindate: str, maxdate: str, query: str = SURGERY_CT_QUERY, page_size: int = 1000, page_token: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+def search_ct_history(mindate: str, maxdate: str, query: str = CT_QUERY, page_size: int = 1000, page_token: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     mindate = mindate.replace("/", "-")
     maxdate = maxdate.replace("/", "-")
     

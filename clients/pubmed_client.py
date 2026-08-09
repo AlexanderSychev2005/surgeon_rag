@@ -74,6 +74,32 @@ def efetch_articles(pmids: List[str]) -> List[Dict[str, Any]]:
     return _parse_efetch_xml(r.content)
 
 
+_MONTHS = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+}
+
+
+def _parse_date_element(el) -> Optional[str]:
+    """PubDate/ArticleDate elements: Year always present if the element is,
+    Month can be numeric or a 3-letter name, Day often missing entirely.
+    Returns an ISO date, defaulting missing Month/Day to 01 - approximate,
+    but this field is for display ("when was this published"), not for
+    watermarking (edat handles that with real day precision)."""
+    if el is None:
+        return None
+    y = el.findtext("Year")
+    if not y:
+        return None
+    m_raw = el.findtext("Month") or "1"
+    m = _MONTHS.get(m_raw.strip().lower()[:3], None)
+    if m is None:
+        m = int(m_raw) if m_raw.isdigit() else 1
+    d_raw = el.findtext("Day")
+    d = int(d_raw) if d_raw and d_raw.isdigit() else 1
+    return f"{int(y):04d}-{m:02d}-{d:02d}"
+
+
 def _parse_efetch_xml(xml_bytes: bytes) -> List[Dict[str, Any]]:
     root = ET.fromstring(xml_bytes)
     articles = []
@@ -103,6 +129,14 @@ def _parse_efetch_xml(xml_bytes: bytes) -> List[Dict[str, Any]]:
                 if y and m and day:
                     edat = f"{int(y):04d}-{int(m):02d}-{int(day):02d}"
 
+        # pub_date: when the article was actually published, for display -
+        # distinct from edat (when PubMed indexed it, for the sync watermark).
+        # Prefer the electronic pub date (most precise, common for epub-ahead-
+        # of-print), fall back to the journal issue's cover date.
+        pub_date = _parse_date_element(art.find(".//Article/ArticleDate"))
+        if not pub_date:
+            pub_date = _parse_date_element(art.find(".//Article/Journal/JournalIssue/PubDate"))
+
         articles.append(
             {
                 "pmid": pmid,
@@ -114,6 +148,7 @@ def _parse_efetch_xml(xml_bytes: bytes) -> List[Dict[str, Any]]:
                 "doi": doi,
                 "pmcid": pmcid,
                 "edat": edat,
+                "pub_date": pub_date,
             }
         )
     return articles

@@ -28,11 +28,13 @@ jobs:
       - name: Create virtual environment
         run: uv venv
 
-      - name: Install torch (CPU-only, avoids the multi-GB CUDA build)
+      - name: Install torch (CPU-only, avoids the multi-GB CUDA build - runners have no GPU)
         run: uv pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install remaining dependencies
-        run: uv pip install -r requirements-ci.txt
+        # inline, not pyproject.toml's `uv sync` - that file pins torch to the
+        # CUDA index for local GPU dev, which would fight the CPU install above
+        run: uv pip install qdrant-client requests python-dotenv pypdf transformers huggingface_hub fastapi uvicorn pydantic
 
       - name: Run incremental sync
         env:
@@ -41,7 +43,10 @@ jobs:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           UNPAYWALL_EMAIL: ${{ secrets.UNPAYWALL_EMAIL }}
-        run: uv run python jobs/sync.py
+        # -m, not a script path - the code is a package now (core/clients/services/
+        # jobs/ingestion), running `python jobs/sync.py` directly puts jobs/ on
+        # sys.path instead of the repo root, so `from core.config import ...` fails
+        run: uv run python -m jobs.sync
 
       - name: Recheck full text on previously abstract-only docs
         env:
@@ -50,7 +55,7 @@ jobs:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           UNPAYWALL_EMAIL: ${{ secrets.UNPAYWALL_EMAIL }}
-        run: uv run python jobs/recheck_fulltext.py
+        run: uv run python -m jobs.recheck_fulltext
 
       - name: Upload run log
         if: always()
