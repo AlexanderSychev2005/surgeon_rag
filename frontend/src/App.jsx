@@ -110,14 +110,14 @@ function App() {
               PubMed Articles
             </label>
             <label className="filter-option">
-              <input 
-                type="radio" 
-                name="docType" 
-                value="clinical_trial" 
-                checked={docType === 'clinical_trial'}
-                onChange={() => setDocType('clinical_trial')} 
+              <input
+                type="radio"
+                name="docType"
+                value="medrxiv_preprint"
+                checked={docType === 'medrxiv_preprint'}
+                onChange={() => setDocType('medrxiv_preprint')}
               />
-              Clinical Trials
+              Preprints (medRxiv)
             </label>
           </div>
 
@@ -206,9 +206,11 @@ function App() {
                       </span>
                     )}
                     <span className="badge type">
-                      {result.doc_type === 'pubmed_article' ? 'Article' : 'Clinical Trial'}
+                      {result.doc_type === 'clinical_trial' ? 'Clinical Trial'
+                        : (result.doc_type === 'medrxiv_preprint' || result.doc_type === 'biorxiv_preprint') ? 'Preprint (Not Peer-Reviewed)'
+                        : 'Article'}
                     </span>
-                    {result.full_text === 'yes' && (
+                    {result.has_full_text && (
                       <span className="badge fulltext">Full Text Available</span>
                     )}
                     {result.pub_date && <span>Date: {result.pub_date}</span>}
