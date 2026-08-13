@@ -1,9 +1,8 @@
 # ==========================================
 # Domain Configuration
-# Term lists are the source of truth for what's in scope: surgery +
-# the neurosurgery-adjacent slice of neurobiology, not all of neuroscience
-# (see NEURO_BROAD_MESH_TERMS below for the road not taken - checked live,
-# 0.62x the size of the surgery corpus alone, ruled out for this MVP).
+# Term lists are the source of truth for what's in scope: surgery,
+# the neurosurgery-adjacent slice of neurobiology, and (as of the neurosurgery
+# focus expansion) general neuroscience too - see NEURO_BROAD_MESH_TERMS.
 # ==========================================
 
 QDRANT_COLLECTION = "pubmed_surgery"
@@ -33,10 +32,20 @@ NEURO_NARROW_MESH_TERMS = [
     "Brain Injuries", "Spinal Cord Injuries", "Brain Neoplasms",
     "Intracranial Hemorrhages", "Neuronal Plasticity", "Drug Resistant Epilepsy", "Stroke",
     "Spinal Fusion", "Hydrocephalus", "Deep Brain Stimulation", "Intracranial Aneurysm",
+    # Added after checking live for incremental (non-tree-subsumed) coverage
+    # against terms already above - each of these adds 2k-13k articles not
+    # already reachable via an included parent term. Skipped candidates that
+    # turned out fully covered already: Pituitary Neoplasms, Laminectomy,
+    # Subarachnoid Hemorrhage (all <60 new articles, i.e. noise not signal).
+    "Meningeal Neoplasms", "Spinal Cord Neoplasms", "Spinal Stenosis",
+    "Intervertebral Disc Displacement", "Intracranial Arteriovenous Malformations",
+    "Vagus Nerve Stimulation", "Movement Disorders", "Craniosynostoses",
 ]
 
-# Broad: general neuroscience incl. basic/molecular research - sized for
-# comparison, NOT wired into the active query.
+# Broad: general neuroscience incl. basic/molecular research. Checked live,
+# 0.62x the size of the surgery corpus alone, mostly basic/molecular research -
+# wired in anyway per explicit decision to prioritize recall for a
+# neurosurgery-focused corpus over precision.
 NEURO_BROAD_MESH_TERMS = [
     "Neurosciences", "Neurons", "Nervous System Physiological Phenomena",
     "Neuronal Plasticity", "Neurodegenerative Diseases", "Synaptic Transmission",
@@ -50,13 +59,14 @@ def _mesh_or_query(terms):
 
 NOT_RETRACTED = 'NOT "Retracted Publication"[pt]'
 
-PUBMED_QUERY = f"{_mesh_or_query(SURGERY_MESH_TERMS)} {NOT_RETRACTED}"  # surgery only, kept for reference/backfill
+PUBMED_QUERY = f"{_mesh_or_query(SURGERY_MESH_TERMS)} {NOT_RETRACTED}"  # surgery only, kept for reference/comparison - not used by sync or backfill
 NEURO_NARROW_QUERY = f"{_mesh_or_query(NEURO_NARROW_MESH_TERMS)} {NOT_RETRACTED}"
 NEURO_BROAD_QUERY = f"{_mesh_or_query(NEURO_BROAD_MESH_TERMS)} {NOT_RETRACTED}"
 
-# What jobs/sync.py actually queries: surgery OR neuro-narrow, one esearch pass.
+# What jobs/sync.py actually queries: surgery OR neuro-narrow OR neuro-broad, one esearch pass.
 COMBINED_PUBMED_QUERY = (
-    f"({_mesh_or_query(SURGERY_MESH_TERMS)} OR {_mesh_or_query(NEURO_NARROW_MESH_TERMS)}) {NOT_RETRACTED}"
+    f"({_mesh_or_query(SURGERY_MESH_TERMS)} OR {_mesh_or_query(NEURO_NARROW_MESH_TERMS)} "
+    f"OR {_mesh_or_query(NEURO_BROAD_MESH_TERMS)}) {NOT_RETRACTED}"
 )
 
 # medRxiv categories to fetch - author-assigned at submission, checked live

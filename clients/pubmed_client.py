@@ -53,15 +53,25 @@ def esearch_history(query: str, mindate: Optional[str] = None, maxdate: Optional
     return result["webenv"], result["querykey"], int(result["count"])
 
 
-def efetch_history_batch(webenv: str, query_key: str, retstart: int, retmax: int) -> List[Dict[str, Any]]:
+def efetch_history_batch(webenv: str, query_key: str, retstart: int, retmax: int, max_retries: int = 3) -> List[Dict[str, Any]]:
+    """Retries on transient connection drops - NCBI occasionally cuts off
+    large XML responses mid-stream (ChunkedEncodingError), unrelated to
+    anything in the request; a retry is enough, no backoff-worthy rate limit
+    involved like the medRxiv 429 case."""
     params = {
         "db": "pubmed", "WebEnv": webenv, "query_key": query_key,
         "retstart": retstart, "retmax": retmax, "rettype": "abstract", "retmode": "xml",
     }
-    _throttle()
-    r = requests.get(f"{EUTILS}/efetch.fcgi", params=_params(params), timeout=90)
-    r.raise_for_status()
-    return _parse_efetch_xml(r.content)
+    for attempt in range(max_retries + 1):
+        _throttle()
+        try:
+            r = requests.get(f"{EUTILS}/efetch.fcgi", params=_params(params), timeout=90)
+            r.raise_for_status()
+            return _parse_efetch_xml(r.content)
+        except requests.RequestException:
+            if attempt == max_retries:
+                raise
+            time.sleep(2 * (attempt + 1))
 
 
 def efetch_articles(pmids: List[str]) -> List[Dict[str, Any]]:

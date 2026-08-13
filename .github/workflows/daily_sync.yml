@@ -1,10 +1,10 @@
 name: Daily PubMed sync
 
 on:
-  # schedule disabled for now - running locally (faster iteration, local GPU).
-  # re-enable once the local flow is stable:
-  schedule:
-    - cron: "0 6 * * *"  # 06:00 UTC daily
+  # schedule disabled - rebuilding the collection from scratch manually
+  # (fresh MeSH scope, dropped/re-added sources), re-enable once that's done:
+  # schedule:
+  #   - cron: "0 6 * * *"  # 06:00 UTC daily
   workflow_dispatch: {}  # manual "Run workflow" button still works
 
 permissions:
@@ -56,6 +56,12 @@ jobs:
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           UNPAYWALL_EMAIL: ${{ secrets.UNPAYWALL_EMAIL }}
         run: uv run python -m jobs.recheck_fulltext
+
+      - name: Drop preprints that have since been published elsewhere
+        env:
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: uv run python -m jobs.recheck_preprints
 
       - name: Upload run log
         if: always()

@@ -3,7 +3,7 @@ import time
 import argparse
 from typing import Optional
 
-from core.config import PUBMED_QUERY, MEDRXIV_CATEGORIES
+from core.config import COMBINED_PUBMED_QUERY, MEDRXIV_CATEGORIES
 from ingestion.ingest import ingest_articles
 from core.logsetup import get_logger
 from clients.pubmed_client import efetch_history_batch, esearch_history
@@ -16,13 +16,13 @@ BATCH_SIZE = 200
 
 
 def count_window(mindate: str, maxdate: str) -> int:
-    _, _, count = esearch_history(PUBMED_QUERY, mindate=mindate, maxdate=maxdate)
+    _, _, count = esearch_history(COMBINED_PUBMED_QUERY, mindate=mindate, maxdate=maxdate)
     return count
 
 
 def run_backfill(mindate: str, maxdate: str, limit: Optional[int] = None, batch_size: int = BATCH_SIZE) -> int:
     client = ensure_collection()
-    webenv, query_key, count = esearch_history(PUBMED_QUERY, mindate=mindate, maxdate=maxdate)
+    webenv, query_key, count = esearch_history(COMBINED_PUBMED_QUERY, mindate=mindate, maxdate=maxdate)
     total = min(count, limit) if limit else count
     log.info(f"backfill window {mindate}..{maxdate}: {count} total matches, processing {total}")
 
