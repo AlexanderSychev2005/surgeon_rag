@@ -1,10 +1,11 @@
 import math
+from typing import Any
+
 import requests
-from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from services.retrieval import retrieve
 
@@ -18,58 +19,64 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class SearchFilters(BaseModel):
     # "all", "pubmed_article", "medrxiv_preprint"
     doc_type: str = "all"
     full_text_only: bool = False
+
 
 class SearchRequest(BaseModel):
     query: str
     filters: SearchFilters
     top_k: int = 5
 
+
 @app.post("/api/search")
-def search(req: SearchRequest) -> Dict[str, Any]:
+def search(req: SearchRequest) -> dict[str, Any]:
     qdrant_filter = None
     must_conditions = []
-    
+
     if req.filters.doc_type != "all":
         must_conditions.append(
-            FieldCondition(
-                key="doc_type",
-                match=MatchValue(value=req.filters.doc_type)
-            )
+            FieldCondition(key="doc_type", match=MatchValue(value=req.filters.doc_type))
         )
-    
+
     if req.filters.full_text_only:
         must_conditions.append(
-            FieldCondition(
-                key="has_full_text",
-                match=MatchValue(value=True)
-            )
+            FieldCondition(key="has_full_text", match=MatchValue(value=True))
         )
-        
+
     if must_conditions:
         qdrant_filter = Filter(must=must_conditions)
-        
+
     candidate_pool = max(50, req.top_k * 10)
-        
+
     try:
-        results = retrieve(req.query, top_k=req.top_k, candidate_pool=candidate_pool, qdrant_filter=qdrant_filter)
+        results = retrieve(
+            req.query,
+            top_k=req.top_k,
+            candidate_pool=candidate_pool,
+            qdrant_filter=qdrant_filter,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
     context_text = ""
     for idx, r in enumerate(results):
         text = r.get("text", "")
         raw_score = r.get("rerank_score", 0)
         relevance_pct = int((1 / (1 + math.exp(-raw_score))) * 100)
-        
+
         raw_doc_type = r.get("doc_type")
-        doc_type_label = "Preprint (Not Peer-Reviewed)" if raw_doc_type == "medrxiv_preprint" else "PubMed Article"
-            
-        context_text += f"\n\nSource [{idx+1}] (Type: {doc_type_label}, Relevance: {relevance_pct}%, Title: {r.get('title')}):\n{text[:800]}..."
-        
+        doc_type_label = (
+            "Preprint (Not Peer-Reviewed)"
+            if raw_doc_type == "medrxiv_preprint"
+            else "PubMed Article"
+        )
+
+        context_text += f"\n\nSource [{idx + 1}] (Type: {doc_type_label}, Relevance: {relevance_pct}%, Title: {r.get('title')}):\n{text[:800]}..."
+
     prompt = f"""You are an advanced, helpful surgical assistant AI designed to answer complex medical questions based strictly on provided scientific literature.
 Please answer the user's question using only the sources below. 
 - You MUST reference the source numbers in your answer (e.g., [1], [2]).
@@ -91,24 +98,21 @@ Sources:
                 "model": "qwen2.5",
                 "prompt": prompt,
                 "stream": False,
-                "options": {
-                    "num_ctx": 8192
-                }
+                "options": {"num_ctx": 8192},
             },
-            timeout=120
+            timeout=120,
         )
         if ollama_res.status_code == 200:
             llm_response = ollama_res.json().get("response", "")
         else:
             llm_response = f"LLM Error: {ollama_res.text}"
-    except Exception as e:
+    except Exception:
         llm_response = "Error connecting to local Ollama (qwen2.5). Please ensure Ollama is installed and running with 'ollama run qwen2.5'."
 
-    return {
-        "results": results,
-        "llm_response": llm_response
-    }
+    return {"results": results, "llm_response": llm_response}
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

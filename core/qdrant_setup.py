@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
@@ -28,10 +28,14 @@ INDEXED_FIELDS = {
 
 
 def get_client() -> QdrantClient:
-    return QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
+    return QdrantClient(
+        url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"]
+    )
 
 
-def scroll_with_retry(client: QdrantClient, max_retries: int = 3, **kwargs: Any) -> Tuple[List[Record], Optional[Any]]:
+def scroll_with_retry(
+    client: QdrantClient, max_retries: int = 3, **kwargs: Any
+) -> tuple[list[Record], Any | None]:
     """Retries on transient Qdrant Cloud 502s - same reasoning as the NCBI
     efetch retry (clients/pubmed_client.py): a same-call retry is enough,
     no rate limit involved."""
@@ -56,7 +60,9 @@ def ensure_collection() -> QdrantClient:
         print(f"collection {QDRANT_COLLECTION!r} already exists")
 
     for field, schema in INDEXED_FIELDS.items():
-        client.create_payload_index(QDRANT_COLLECTION, field_name=field, field_schema=schema)
+        client.create_payload_index(
+            QDRANT_COLLECTION, field_name=field, field_schema=schema
+        )
     print(f"payload indexes ensured: {list(INDEXED_FIELDS)}")
     return client
 

@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs"))
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -15,7 +15,9 @@ def get_logger(name: str) -> logging.Logger:
     if logger.handlers:
         return logger
     logger.setLevel(logging.INFO)
-    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S")
+    fmt = logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
 
     console = logging.StreamHandler()
     console.setFormatter(fmt)
@@ -30,13 +32,13 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-def record_event(event_type: str, **kwargs: Any) -> Dict[str, Any]:
+def record_event(event_type: str, **kwargs: Any) -> dict[str, Any]:
     history_file = os.path.join(LOG_DIR, "sync_history.jsonl")
     event = {
-        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
         "run_id": RUN_TIMESTAMP,
         "event": event_type,
-        **kwargs
+        **kwargs,
     }
     with open(history_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")

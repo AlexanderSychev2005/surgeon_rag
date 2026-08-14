@@ -1,4 +1,5 @@
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from qdrant_client.models import Filter
 
 from core.config import QDRANT_COLLECTION
@@ -7,7 +8,12 @@ from services.embedder import embed_queries
 from services.reranker import rerank
 
 
-def retrieve(question: str, top_k: int = 8, candidate_pool: int = 100, qdrant_filter: Optional[Filter] = None) -> List[Dict[str, Any]]:
+def retrieve(
+    question: str,
+    top_k: int = 8,
+    candidate_pool: int = 100,
+    qdrant_filter: Filter | None = None,
+) -> list[dict[str, Any]]:
     client = get_client()
     query_vector = embed_queries([question])[0].tolist()
 

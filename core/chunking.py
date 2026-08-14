@@ -1,6 +1,4 @@
-from typing import List
-
-def chunk_text(text: str, max_chars: int = 1200) -> List[str]:
+def chunk_text(text: str, max_chars: int = 1200) -> list[str]:
     paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
     chunks, current = [], ""
     for p in paragraphs:
@@ -29,9 +27,16 @@ def chunk_text(text: str, max_chars: int = 1200) -> List[str]:
 
 
 def demo() -> None:
-    text = ("Intro paragraph. " * 20 + "\n") + ("Methods paragraph. " * 100) + "\n" + "Short tail."
+    text = (
+        ("Intro paragraph. " * 20 + "\n")
+        + ("Methods paragraph. " * 100)
+        + "\n"
+        + "Short tail."
+    )
     chunks = chunk_text(text, max_chars=300)
-    assert chunks and all(len(c) <= 400 for c in chunks)  # a little slack for sentence overshoot
+    assert chunks and all(
+        len(c) <= 400 for c in chunks
+    )  # a little slack for sentence overshoot
     assert "".join(chunks).replace("\n", "").strip() != ""
     print(f"OK: {len(chunks)} chunks, sizes={[len(c) for c in chunks]}")
 

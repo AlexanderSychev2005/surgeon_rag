@@ -1,19 +1,19 @@
 import random
 import time
 import uuid
-from typing import List, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import requests
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
 from core.chunking import chunk_text
-from core.config import QDRANT_COLLECTION, NAMESPACE
-from services.embedder import embed_articles
-from services.fulltext import _text_from_pdf_url
+from core.config import NAMESPACE, QDRANT_COLLECTION
 from core.logsetup import get_logger
 from ingestion.ingest import UPSERT_BATCH
+from services.embedder import embed_articles
+from services.fulltext import _text_from_pdf_url
 
 log = get_logger(__name__)
 # Lower than ingestion/ingest.py's 16 on purpose: that pool spans many
@@ -39,8 +39,12 @@ def _fetch_preprint_pdf(doi: str, max_retries: int = 2) -> str:
         except requests.HTTPError as e:
             is_last = attempt == max_retries
             if e.response is not None and e.response.status_code == 429 and not is_last:
-                wait = 2 * (attempt + 1) + random.uniform(0, 1)  # jitter - several workers hit 429 together
-                log.debug(f"429 for medRxiv PDF {doi}, retrying in {wait:.1f}s ({attempt + 1}/{max_retries})")
+                wait = 2 * (attempt + 1) + random.uniform(
+                    0, 1
+                )  # jitter - several workers hit 429 together
+                log.debug(
+                    f"429 for medRxiv PDF {doi}, retrying in {wait:.1f}s ({attempt + 1}/{max_retries})"
+                )
                 time.sleep(wait)
                 continue
             log.warning(f"Failed to fetch medRxiv PDF for {doi}: {e}")
@@ -51,7 +55,7 @@ def _fetch_preprint_pdf(doi: str, max_retries: int = 2) -> str:
     return ""
 
 
-def _payload_preprint(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
+def _payload_preprint(doc: dict[str, Any], **extra: Any) -> dict[str, Any]:
     base = {
         "doc_type": "medrxiv_preprint",
         "doi": doc["doi"],
@@ -67,15 +71,21 @@ def _payload_preprint(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
     return base
 
 
-def ingest_preprints(client: QdrantClient, preprints: List[Dict[str, Any]]) -> Tuple[int, int]:
+def ingest_preprints(
+    client: QdrantClient, preprints: list[dict[str, Any]]
+) -> tuple[int, int]:
     already_published = [d for d in preprints if d.get("already_published_as")]
     if already_published:
-        log.info(f"skipping {len(already_published)} medRxiv preprints already published elsewhere "
-                 f"(the published version will come in through the PubMed sync instead)")
+        log.info(
+            f"skipping {len(already_published)} medRxiv preprints already published elsewhere "
+            f"(the published version will come in through the PubMed sync instead)"
+        )
     preprints = [d for d in preprints if not d.get("already_published_as")]
 
     with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
-        full_texts = list(pool.map(lambda d: _fetch_preprint_pdf(d.get("doi", "")), preprints))
+        full_texts = list(
+            pool.map(lambda d: _fetch_preprint_pdf(d.get("doi", "")), preprints)
+        )
 
     entries = []
 
@@ -89,7 +99,9 @@ def ingest_preprints(client: QdrantClient, preprints: List[Dict[str, Any]]) -> T
             for i, chunk in enumerate(chunks):
                 entries.append((doc, f"fulltext_{i}", chunk))
 
-        log.info(f"ingest medrxiv doi={doc['doi']} title={doc['title'][:60]!r} chunks={n_chunks}")
+        log.info(
+            f"ingest medrxiv doi={doc['doi']} title={doc['title'][:60]!r} chunks={n_chunks}"
+        )
 
     if not entries:
         log.info("ingest_preprints: nothing to write")
@@ -98,21 +110,32 @@ def ingest_preprints(client: QdrantClient, preprints: List[Dict[str, Any]]) -> T
     pairs = [[doc["title"], text] for doc, section, text in entries]
     vectors = embed_articles(pairs)
 
-    has_full_text = {doc["doi"] for doc, section, text in entries if section != "abstract"}
+    has_full_text = {
+        doc["doi"] for doc, section, text in entries if section != "abstract"
+    }
 
     points = [
         PointStruct(
             id=str(uuid.uuid5(NAMESPACE, f"doi:{doc['doi']}:{section}")),
             vector=vector.tolist(),
-            payload=_payload_preprint(doc, section=section, text=text, source=doc["journal"],
-                                        has_full_text=doc["doi"] in has_full_text),
+            payload=_payload_preprint(
+                doc,
+                section=section,
+                text=text,
+                source=doc["journal"],
+                has_full_text=doc["doi"] in has_full_text,
+            ),
         )
         for (doc, section, text), vector in zip(entries, vectors)
     ]
 
     for i in range(0, len(points), UPSERT_BATCH):
-        client.upsert(collection_name=QDRANT_COLLECTION, points=points[i:i + UPSERT_BATCH])
+        client.upsert(
+            collection_name=QDRANT_COLLECTION, points=points[i : i + UPSERT_BATCH]
+        )
 
-    log.info(f"upserted {len(points)} points for {len(preprints)} preprints into {QDRANT_COLLECTION!r}")
+    log.info(
+        f"upserted {len(points)} points for {len(preprints)} preprints into {QDRANT_COLLECTION!r}"
+    )
 
     return len(points), len(preprints)

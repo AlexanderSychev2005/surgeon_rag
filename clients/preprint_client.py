@@ -6,7 +6,8 @@ neurosurgical department wants). Pages at ~30 items/request; the loop uses
 the response's own `total` rather than assuming a page size (that
 assumption was wrong and cost us most of the medRxiv results before it
 was caught)."""
-from typing import Any, Dict, List
+
+from typing import Any
 
 import requests
 
@@ -17,7 +18,9 @@ log = get_logger(__name__)
 API_BASE = "https://api.biorxiv.org/details/medrxiv"
 
 
-def fetch_by_category(mindate: str, maxdate: str, categories: List[str]) -> List[Dict[str, Any]]:
+def fetch_by_category(
+    mindate: str, maxdate: str, categories: list[str]
+) -> list[dict[str, Any]]:
     """Filters by the author-assigned `category` field - no server-side
     search exists, only date-range listing, so this pages through the whole
     window and filters client-side."""
@@ -44,7 +47,9 @@ def fetch_by_category(mindate: str, maxdate: str, categories: List[str]) -> List
         if not collection:
             break
 
-        matches.extend(p for p in collection if (p.get("category") or "").lower() in cats)
+        matches.extend(
+            p for p in collection if (p.get("category") or "").lower() in cats
+        )
 
         cursor += len(collection)
         if cursor >= total_available:
@@ -53,7 +58,7 @@ def fetch_by_category(mindate: str, maxdate: str, categories: List[str]) -> List
     return matches
 
 
-def parse_preprint(paper_json: Dict[str, Any]) -> Dict[str, Any]:
+def parse_preprint(paper_json: dict[str, Any]) -> dict[str, Any]:
     doi = paper_json.get("doi", "")
     title = paper_json.get("title", "")
     abstract = paper_json.get("abstract", "")

@@ -1,6 +1,5 @@
 import io
 import os
-from typing import Optional, Tuple
 
 import requests
 from dotenv import load_dotenv
@@ -16,8 +15,10 @@ UNPAYWALL_API = "https://api.unpaywall.org/v2/{doi}"
 UNPAYWALL_EMAIL = os.environ.get("UNPAYWALL_EMAIL", "")
 
 
-def _text_from_pdf_url(url: str) -> Optional[str]:
-    r = requests.get(url, timeout=30, headers={"User-Agent": "medical-rag-research/0.1"})
+def _text_from_pdf_url(url: str) -> str | None:
+    r = requests.get(
+        url, timeout=30, headers={"User-Agent": "medical-rag-research/0.1"}
+    )
     r.raise_for_status()
     if not r.content.startswith(b"%PDF"):
         return None
@@ -25,7 +26,9 @@ def _text_from_pdf_url(url: str) -> Optional[str]:
     return "\n".join((p.extract_text() or "") for p in reader.pages).strip()
 
 
-def get_full_text(pmcid: Optional[str] = None, doi: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+def get_full_text(
+    pmcid: str | None = None, doi: str | None = None
+) -> tuple[str | None, str | None]:
     """Europe PMC used to be a fallback here too, but checked across two real
     bootstrap runs (700+ full-text hits): it never once contributed anything
     PMC OA S3 hadn't already found - its full-text indexing lags PMC's own OA
@@ -45,7 +48,9 @@ def get_full_text(pmcid: Optional[str] = None, doi: Optional[str] = None) -> Tup
     if doi:
         try:
             r = requests.get(
-                UNPAYWALL_API.format(doi=doi), params={"email": UNPAYWALL_EMAIL}, timeout=20
+                UNPAYWALL_API.format(doi=doi),
+                params={"email": UNPAYWALL_EMAIL},
+                timeout=20,
             )
             if r.ok:
                 data = r.json()

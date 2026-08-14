@@ -1,7 +1,7 @@
 import os
 import time
 import xml.etree.ElementTree as ET
-from typing import List, Optional, Tuple, Dict, Any
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -23,7 +23,7 @@ def _throttle() -> None:
     _last_call = time.time()
 
 
-def _params(extra: Dict[str, Any]) -> Dict[str, Any]:
+def _params(extra: dict[str, Any]) -> dict[str, Any]:
     p = dict(extra)
     if NCBI_API_KEY:
         p["api_key"] = NCBI_API_KEY
@@ -32,7 +32,13 @@ def _params(extra: Dict[str, Any]) -> Dict[str, Any]:
     return p
 
 
-def esearch_pmids(query: str, retmax: int = 20, mindate: Optional[str] = None, maxdate: Optional[str] = None, datetype: str = "edat") -> List[str]:
+def esearch_pmids(
+    query: str,
+    retmax: int = 20,
+    mindate: str | None = None,
+    maxdate: str | None = None,
+    datetype: str = "edat",
+) -> list[str]:
     params = {"db": "pubmed", "term": query, "retmax": retmax, "retmode": "json"}
     if mindate and maxdate:
         params.update(datetype=datetype, mindate=mindate, maxdate=maxdate)
@@ -42,8 +48,19 @@ def esearch_pmids(query: str, retmax: int = 20, mindate: Optional[str] = None, m
     return r.json()["esearchresult"]["idlist"]
 
 
-def esearch_history(query: str, mindate: Optional[str] = None, maxdate: Optional[str] = None, datetype: str = "pdat") -> Tuple[str, str, int]:
-    params = {"db": "pubmed", "term": query, "retmode": "json", "usehistory": "y", "retmax": 0}
+def esearch_history(
+    query: str,
+    mindate: str | None = None,
+    maxdate: str | None = None,
+    datetype: str = "pdat",
+) -> tuple[str, str, int]:
+    params = {
+        "db": "pubmed",
+        "term": query,
+        "retmode": "json",
+        "usehistory": "y",
+        "retmax": 0,
+    }
     if mindate and maxdate:
         params.update(datetype=datetype, mindate=mindate, maxdate=maxdate)
     _throttle()
@@ -53,19 +70,28 @@ def esearch_history(query: str, mindate: Optional[str] = None, maxdate: Optional
     return result["webenv"], result["querykey"], int(result["count"])
 
 
-def efetch_history_batch(webenv: str, query_key: str, retstart: int, retmax: int, max_retries: int = 3) -> List[Dict[str, Any]]:
+def efetch_history_batch(
+    webenv: str, query_key: str, retstart: int, retmax: int, max_retries: int = 3
+) -> list[dict[str, Any]]:
     """Retries on transient connection drops - NCBI occasionally cuts off
     large XML responses mid-stream (ChunkedEncodingError), unrelated to
     anything in the request; a retry is enough, no backoff-worthy rate limit
     involved like the medRxiv 429 case."""
     params = {
-        "db": "pubmed", "WebEnv": webenv, "query_key": query_key,
-        "retstart": retstart, "retmax": retmax, "rettype": "abstract", "retmode": "xml",
+        "db": "pubmed",
+        "WebEnv": webenv,
+        "query_key": query_key,
+        "retstart": retstart,
+        "retmax": retmax,
+        "rettype": "abstract",
+        "retmode": "xml",
     }
     for attempt in range(max_retries + 1):
         _throttle()
         try:
-            r = requests.get(f"{EUTILS}/efetch.fcgi", params=_params(params), timeout=90)
+            r = requests.get(
+                f"{EUTILS}/efetch.fcgi", params=_params(params), timeout=90
+            )
             r.raise_for_status()
             return _parse_efetch_xml(r.content)
         except requests.RequestException:
@@ -74,10 +100,15 @@ def efetch_history_batch(webenv: str, query_key: str, retstart: int, retmax: int
             time.sleep(2 * (attempt + 1))
 
 
-def efetch_articles(pmids: List[str]) -> List[Dict[str, Any]]:
+def efetch_articles(pmids: list[str]) -> list[dict[str, Any]]:
     if not pmids:
         return []
-    params = {"db": "pubmed", "id": ",".join(pmids), "rettype": "abstract", "retmode": "xml"}
+    params = {
+        "db": "pubmed",
+        "id": ",".join(pmids),
+        "rettype": "abstract",
+        "retmode": "xml",
+    }
     _throttle()
     r = requests.get(f"{EUTILS}/efetch.fcgi", params=_params(params), timeout=60)
     r.raise_for_status()
@@ -85,12 +116,22 @@ def efetch_articles(pmids: List[str]) -> List[Dict[str, Any]]:
 
 
 _MONTHS = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 
 
-def _parse_date_element(el: Optional[ET.Element]) -> Optional[str]:
+def _parse_date_element(el: ET.Element | None) -> str | None:
     """PubDate/ArticleDate elements: Year always present if the element is,
     Month can be numeric or a 3-letter name, Day often missing entirely.
     Returns an ISO date, defaulting missing Month/Day to 01 - approximate,
@@ -110,7 +151,7 @@ def _parse_date_element(el: Optional[ET.Element]) -> Optional[str]:
     return f"{int(y):04d}-{m:02d}-{d:02d}"
 
 
-def _parse_efetch_xml(xml_bytes: bytes) -> List[Dict[str, Any]]:
+def _parse_efetch_xml(xml_bytes: bytes) -> list[dict[str, Any]]:
     root = ET.fromstring(xml_bytes)
     articles = []
     for art in root.findall(".//PubmedArticle"):
@@ -120,9 +161,15 @@ def _parse_efetch_xml(xml_bytes: bytes) -> List[Dict[str, Any]]:
             (t.text or "") for t in art.findall(".//Article/Abstract/AbstractText")
         )
         mesh_terms = [
-            d.text for d in art.findall(".//MeshHeadingList/MeshHeading/DescriptorName") if d.text
+            d.text
+            for d in art.findall(".//MeshHeadingList/MeshHeading/DescriptorName")
+            if d.text
         ]
-        pub_types = [t.text for t in art.findall(".//PublicationTypeList/PublicationType") if t.text]
+        pub_types = [
+            t.text
+            for t in art.findall(".//PublicationTypeList/PublicationType")
+            if t.text
+        ]
         journal = art.findtext(".//Article/Journal/Title") or ""
 
         doi, pmcid = None, None
@@ -145,7 +192,9 @@ def _parse_efetch_xml(xml_bytes: bytes) -> List[Dict[str, Any]]:
         # of-print), fall back to the journal issue's cover date.
         pub_date = _parse_date_element(art.find(".//Article/ArticleDate"))
         if not pub_date:
-            pub_date = _parse_date_element(art.find(".//Article/Journal/JournalIssue/PubDate"))
+            pub_date = _parse_date_element(
+                art.find(".//Article/Journal/JournalIssue/PubDate")
+            )
 
         articles.append(
             {

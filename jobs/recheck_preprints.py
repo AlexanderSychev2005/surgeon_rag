@@ -1,6 +1,5 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Tuple, Optional
 
 import requests
 from qdrant_client.models import FieldCondition, Filter, MatchValue
@@ -27,7 +26,9 @@ def _is_now_published(doi: str, max_retries: int = 2) -> bool:
     lookups in one run, unrelated to the request itself."""
     for attempt in range(max_retries + 1):
         try:
-            r = requests.get(f"https://api.biorxiv.org/details/medrxiv/{doi}", timeout=30)
+            r = requests.get(
+                f"https://api.biorxiv.org/details/medrxiv/{doi}", timeout=30
+            )
             r.raise_for_status()
             versions = r.json().get("collection", [])
             return any(v.get("published", "NA") not in ("", "NA") for v in versions)
@@ -38,7 +39,7 @@ def _is_now_published(doi: str, max_retries: int = 2) -> bool:
             time.sleep(2 * (attempt + 1))
 
 
-def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[int, int]:
+def recheck(batch_size: int = 50, max_batches: int | None = None) -> tuple[int, int]:
     """Drops preprints that have since been published elsewhere - the
     published version comes in through the normal PubMed sync instead, same
     reasoning as the already_published_as skip at ingestion time
@@ -59,7 +60,9 @@ def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[in
             break
 
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-            published_flags = list(pool.map(lambda p: _is_now_published(p.payload["doi"]), points))
+            published_flags = list(
+                pool.map(lambda p: _is_now_published(p.payload["doi"]), points)
+            )
 
         for point, is_published in zip(points, published_flags):
             checked += 1
@@ -68,17 +71,25 @@ def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[in
             doi = point.payload["doi"]
             client.delete(
                 collection_name=QDRANT_COLLECTION,
-                points_selector=Filter(must=[
-                    FieldCondition(key="doi", match=MatchValue(value=doi)),
-                    FieldCondition(key="doc_type", match=MatchValue(value="medrxiv_preprint")),
-                ]),
+                points_selector=Filter(
+                    must=[
+                        FieldCondition(key="doi", match=MatchValue(value=doi)),
+                        FieldCondition(
+                            key="doc_type", match=MatchValue(value="medrxiv_preprint")
+                        ),
+                    ]
+                ),
             )
             removed += 1
-            log.info(f"recheck_preprints: removed now-published preprint doi={doi} "
-                      f"title={point.payload['title'][:60]!r}")
+            log.info(
+                f"recheck_preprints: removed now-published preprint doi={doi} "
+                f"title={point.payload['title'][:60]!r}"
+            )
 
         batches += 1
-        log.info(f"recheck_preprints batch {batches}: checked {checked} so far, {removed} removed")
+        log.info(
+            f"recheck_preprints batch {batches}: checked {checked} so far, {removed} removed"
+        )
         if offset is None or (max_batches and batches >= max_batches):
             break
 
