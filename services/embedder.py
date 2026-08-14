@@ -1,20 +1,20 @@
+from functools import lru_cache
+
 import torch
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Any
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
-_CACHE: Dict[str, Tuple[Any, Any]] = {}
 
 
+@lru_cache(maxsize=None)
 def _load(name: str) -> Tuple[Any, Any]:
-    if name not in _CACHE:
-        tok = AutoTokenizer.from_pretrained(name)
-        model = AutoModel.from_pretrained(name).to(DEVICE, dtype=DTYPE)
-        model.eval()
-        _CACHE[name] = (tok, model)
-    return _CACHE[name]
+    tok = AutoTokenizer.from_pretrained(name)
+    model = AutoModel.from_pretrained(name).to(DEVICE, dtype=DTYPE)
+    model.eval()
+    return tok, model
 
 
 @torch.no_grad()

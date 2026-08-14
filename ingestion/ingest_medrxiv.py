@@ -9,14 +9,13 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
 from core.chunking import chunk_text
-from core.config import QDRANT_COLLECTION
+from core.config import QDRANT_COLLECTION, NAMESPACE
 from services.embedder import embed_articles
 from services.fulltext import _text_from_pdf_url
 from core.logsetup import get_logger
 from ingestion.ingest import UPSERT_BATCH
 
 log = get_logger(__name__)
-NAMESPACE = uuid.NAMESPACE_DNS
 # Lower than ingestion/ingest.py's 16 on purpose: that pool spans many
 # different domains (PMC, Unpaywall, publishers), this one hits a single
 # domain (medrxiv.org) per run - 16 concurrent requests to one host was
@@ -68,23 +67,19 @@ def _payload_preprint(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
     return base
 
 
-def ingest_preprints(client: QdrantClient, preprints: List[Dict[str, Any]], fetch_full_text: bool = True) -> Tuple[int, int]:
+def ingest_preprints(client: QdrantClient, preprints: List[Dict[str, Any]]) -> Tuple[int, int]:
     already_published = [d for d in preprints if d.get("already_published_as")]
     if already_published:
         log.info(f"skipping {len(already_published)} medRxiv preprints already published elsewhere "
                  f"(the published version will come in through the PubMed sync instead)")
     preprints = [d for d in preprints if not d.get("already_published_as")]
 
-    if fetch_full_text:
-        with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
-            full_texts = list(pool.map(lambda d: _fetch_preprint_pdf(d.get("doi", "")), preprints))
-    else:
-        full_texts = [""] * len(preprints)
+    with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
+        full_texts = list(pool.map(lambda d: _fetch_preprint_pdf(d.get("doi", "")), preprints))
 
     entries = []
 
     for doc, ft_text in zip(preprints, full_texts):
-        # We always ingest the abstract
         entries.append((doc, "abstract", doc["abstract"]))
 
         n_chunks = 0

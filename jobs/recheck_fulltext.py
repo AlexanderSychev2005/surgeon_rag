@@ -9,16 +9,15 @@ from qdrant_client.models import (
     PointStruct,
 )
 
-from core.config import QDRANT_COLLECTION
+from core.config import QDRANT_COLLECTION, NAMESPACE
 from core.chunking import chunk_text
 from services.embedder import embed_articles
 from services.fulltext import get_full_text
 from ingestion.ingest import FULLTEXT_WORKERS, UPSERT_BATCH
 from core.logsetup import get_logger, record_event
-from core.qdrant_setup import get_client
+from core.qdrant_setup import get_client, scroll_with_retry
 
 log = get_logger(__name__)
-NAMESPACE = uuid.NAMESPACE_DNS
 
 PENDING_FILTER = Filter(
     must=[
@@ -41,7 +40,8 @@ def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[in
     ft_points = 0
 
     while True:
-        points, offset = client.scroll(
+        points, offset = scroll_with_retry(
+            client,
             collection_name=QDRANT_COLLECTION,
             scroll_filter=PENDING_FILTER,
             limit=batch_size,

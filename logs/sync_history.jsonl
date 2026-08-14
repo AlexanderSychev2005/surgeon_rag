@@ -1,2 +1,7 @@
 {"timestamp": "2026-08-13T12:38:45.269068+00:00", "run_id": "2026-08-13_14-49-03", "event": "sync", "window": "2026/08/03..2026/08/13", "watermark": null, "matched": 2628, "articles_written": 2628, "points_written": 71500, "with_full_text": 1045, "full_text_points": 68872, "sources": {"pmc_oa": 996, "unpaywall": 49}}
 {"timestamp": "2026-08-13T12:43:09.996396+00:00", "run_id": "2026-08-13_14-49-03", "event": "sync_medrxiv", "window": "2026-08-03..2026-08-13", "watermark": null, "preprints_written": 96, "points_written": 1675}
+{"timestamp": "2026-08-14T07:49:11.843344+00:00", "run_id": "2026-08-14_10-44-30", "event": "sync", "window": "2026/08/12..2026/08/14", "watermark": "2026-08-13", "matched": 683, "articles_written": 683, "points_written": 8799, "with_full_text": 148, "full_text_points": 8116, "sources": {"unpaywall": 48, "pmc_oa": 100}}
+{"timestamp": "2026-08-14T07:51:25.132362+00:00", "run_id": "2026-08-14_10-44-30", "event": "sync_medrxiv", "window": "2026-08-11..2026-08-14", "watermark": "2026-08-12", "preprints_written": 22, "points_written": 1086}
+{"timestamp": "2026-08-14T07:57:53.309502+00:00", "run_id": "2026-08-14_10-51-38", "event": "recheck", "checked": 1660, "upgraded": 9, "sources": {"unpaywall": 9}, "full_text_points": 447}
+{"timestamp": "2026-08-14T08:01:05.048180+00:00", "run_id": "2026-08-14_10-59-21", "event": "recheck_preprints", "checked": 101, "removed": 0}
+{"timestamp": "2026-08-14T08:02:07.400724+00:00", "run_id": "2026-08-14_11-01-53", "event": "recheck_preprints", "checked": 101, "removed": 0}

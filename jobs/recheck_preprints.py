@@ -1,3 +1,4 @@
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple, Optional
 
@@ -6,7 +7,7 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from core.config import QDRANT_COLLECTION
 from core.logsetup import get_logger, record_event
-from core.qdrant_setup import get_client
+from core.qdrant_setup import get_client, scroll_with_retry
 
 log = get_logger(__name__)
 WORKERS = 4
@@ -19,17 +20,22 @@ PREPRINT_FILTER = Filter(
 )
 
 
-def _is_now_published(doi: str) -> bool:
+def _is_now_published(doi: str, max_retries: int = 2) -> bool:
     """Single-DOI lookup (not a date-range page scan) - returns every version
-    of the preprint, each carrying its own `published` field."""
-    try:
-        r = requests.get(f"https://api.biorxiv.org/details/medrxiv/{doi}", timeout=30)
-        r.raise_for_status()
-        versions = r.json().get("collection", [])
-    except requests.RequestException as e:
-        log.warning(f"recheck_preprints: lookup failed for doi={doi}: {e}")
-        return False
-    return any(v.get("published", "NA") not in ("", "NA") for v in versions)
+    of the preprint, each carrying its own `published` field. Retries on
+    transient 5xx - api.biorxiv.org threw 500/503 on ~30% of single-DOI
+    lookups in one run, unrelated to the request itself."""
+    for attempt in range(max_retries + 1):
+        try:
+            r = requests.get(f"https://api.biorxiv.org/details/medrxiv/{doi}", timeout=30)
+            r.raise_for_status()
+            versions = r.json().get("collection", [])
+            return any(v.get("published", "NA") not in ("", "NA") for v in versions)
+        except requests.RequestException as e:
+            if attempt == max_retries:
+                log.warning(f"recheck_preprints: lookup failed for doi={doi}: {e}")
+                return False
+            time.sleep(2 * (attempt + 1))
 
 
 def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[int, int]:
@@ -41,7 +47,8 @@ def recheck(batch_size: int = 50, max_batches: Optional[int] = None) -> Tuple[in
     checked, removed, offset, batches = 0, 0, None, 0
 
     while True:
-        points, offset = client.scroll(
+        points, offset = scroll_with_retry(
+            client,
             collection_name=QDRANT_COLLECTION,
             scroll_filter=PREPRINT_FILTER,
             limit=batch_size,

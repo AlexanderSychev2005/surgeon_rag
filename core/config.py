@@ -1,3 +1,6 @@
+import uuid
+from typing import List
+
 # ==========================================
 # Domain Configuration
 # Term lists are the source of truth for what's in scope: surgery,
@@ -6,6 +9,7 @@
 # ==========================================
 
 QDRANT_COLLECTION = "pubmed_surgery"
+NAMESPACE = uuid.NAMESPACE_DNS  # for deterministic point IDs (uuid5) across ingestion/recheck jobs
 
 SURGERY_MESH_TERMS = [
     "Surgical Procedures, Operative", "General Surgery", "Perioperative Care",
@@ -53,15 +57,11 @@ NEURO_BROAD_MESH_TERMS = [
 ]
 
 
-def _mesh_or_query(terms):
+def _mesh_or_query(terms: List[str]) -> str:
     return "(" + " OR ".join(f'"{t}"[MeSH]' for t in terms) + ")"
 
 
 NOT_RETRACTED = 'NOT "Retracted Publication"[pt]'
-
-PUBMED_QUERY = f"{_mesh_or_query(SURGERY_MESH_TERMS)} {NOT_RETRACTED}"  # surgery only, kept for reference/comparison - not used by sync or backfill
-NEURO_NARROW_QUERY = f"{_mesh_or_query(NEURO_NARROW_MESH_TERMS)} {NOT_RETRACTED}"
-NEURO_BROAD_QUERY = f"{_mesh_or_query(NEURO_BROAD_MESH_TERMS)} {NOT_RETRACTED}"
 
 # What jobs/sync.py actually queries: surgery OR neuro-narrow OR neuro-broad, one esearch pass.
 COMBINED_PUBMED_QUERY = (

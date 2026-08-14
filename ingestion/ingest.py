@@ -6,13 +6,12 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
 from core.chunking import chunk_text
-from core.config import QDRANT_COLLECTION
+from core.config import QDRANT_COLLECTION, NAMESPACE
 from services.embedder import embed_articles
 from services.fulltext import get_full_text
 from core.logsetup import get_logger
 
 log = get_logger(__name__)
-NAMESPACE = uuid.NAMESPACE_DNS
 UPSERT_BATCH = 64
 FULLTEXT_WORKERS = 16
 
@@ -41,12 +40,9 @@ def _payload(doc: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
     return base
 
 
-def ingest_articles(client: QdrantClient, articles: List[Dict[str, Any]], fetch_full_text: bool = True) -> Tuple[int, int, Dict[str, int], int]:
-    if fetch_full_text:
-        with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
-            full_text_results = list(pool.map(_fetch_full_text, articles))
-    else:
-        full_text_results = [(None, None)] * len(articles)
+def ingest_articles(client: QdrantClient, articles: List[Dict[str, Any]]) -> Tuple[int, int, Dict[str, int], int]:
+    with ThreadPoolExecutor(max_workers=FULLTEXT_WORKERS) as pool:
+        full_text_results = list(pool.map(_fetch_full_text, articles))
 
     entries = []
     for doc, (full_text, ft_source) in zip(articles, full_text_results):

@@ -90,7 +90,7 @@ _MONTHS = {
 }
 
 
-def _parse_date_element(el) -> Optional[str]:
+def _parse_date_element(el: Optional[ET.Element]) -> Optional[str]:
     """PubDate/ArticleDate elements: Year always present if the element is,
     Month can be numeric or a 3-letter name, Day often missing entirely.
     Returns an ISO date, defaulting missing Month/Day to 01 - approximate,

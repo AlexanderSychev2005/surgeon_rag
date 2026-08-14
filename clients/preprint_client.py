@@ -62,13 +62,9 @@ def parse_preprint(paper_json: Dict[str, Any]) -> Dict[str, Any]:
     published = paper_json.get("published", "")
 
     return {
-        "pmid": 0,
         "doi": doi,
-        "nctId": "",
-        "pmcid": "",
         "title": title,
         "abstract": abstract,
-        "full_text": "",
         "mesh_terms": [],
         "pub_types": ["Preprint"],
         "journal": "medRxiv",
